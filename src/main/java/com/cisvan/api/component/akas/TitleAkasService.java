@@ -11,6 +11,6 @@ public class TitleAkasService {
     private TitleAkasRepository titleAkasRepository;
 
     public List<TitleAkas> findById(String tconst) {
-        return titleAkasRepository.findByTitleId(tconst);
+        return titleAkasRepository.findByTconst(tconst);
     }
 }

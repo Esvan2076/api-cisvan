@@ -3,29 +3,31 @@ package com.cisvan.api.component.akas;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.util.List;
+
 @Entity
 @Data
 @Table(name = "title_akas")
 public class TitleAkas {
 
     @EmbeddedId
-    private TitleAkasId id; // Clave compuesta (titleId + ordering)
+    private TitleAkasId id; // Clave compuesta (tconst + ordering)
 
-    @Column(name = "title", nullable = false)
+    @Column(name = "title", columnDefinition = "TEXT")
     private String title;
 
-    @Column(name = "region")
+    @Column(name = "region", length = 10)
     private String region;
 
-    @Column(name = "language")
+    @Column(name = "language", length = 10)
     private String language;
 
-    @Column(name = "types")
-    private String types;
+    @Column(name = "types", columnDefinition = "TEXT[]")
+    private List<String> types; // Mapeo de array a List<String>
 
-    @Column(name = "attributes")
-    private String attributes;
+    @Column(name = "attributes", columnDefinition = "TEXT[]")
+    private List<String> attributes; // Mapeo de array a List<String>
 
-    @Column(name = "isoriginaltitle", columnDefinition = "BOOLEAN DEFAULT FALSE")
+    @Column(name = "is_original_title", columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean isOriginalTitle = false;
 }

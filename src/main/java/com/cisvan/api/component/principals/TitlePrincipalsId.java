@@ -9,9 +9,9 @@ import java.io.Serializable;
 @Embeddable
 public class TitlePrincipalsId implements Serializable {
 
-    @Column(name = "tconst")
+    @Column(name = "tconst", length = 15)
     private String tconst;
     
     @Column(name = "ordering")
-    private Integer ordering;
+    private Short ordering;
 }

@@ -10,12 +10,12 @@ import java.math.BigDecimal;
 public class TitleRatings {
 
     @Id
-    @Column(name = "tconst", nullable = false)
+    @Column(name = "tconst", length = 15, nullable = false)
     private String tconst;
 
-    @Column(name = "averagerating", precision = 3, scale = 1, columnDefinition = "DECIMAL(3,1) DEFAULT 0.0")
-    private BigDecimal averageRating = BigDecimal.valueOf(0.0);
+    @Column(name = "average_rating", precision = 4, scale = 2, columnDefinition = "DECIMAL(4,2) DEFAULT 0.00")
+    private BigDecimal averageRating = BigDecimal.valueOf(0.00);
 
-    @Column(name = "numvotes", columnDefinition = "INT DEFAULT 0")
+    @Column(name = "num_votes", columnDefinition = "INT DEFAULT 0")
     private Integer numVotes = 0;
 }

@@ -9,17 +9,17 @@ import lombok.Data;
 public class TitlePrincipals {
 
     @EmbeddedId
-    private TitlePrincipalsId id; // Clave compuesta
+    private TitlePrincipalsId id; // Clave compuesta (tconst, ordering)
 
-    @Column(name = "nconst", nullable = false)
-    private String nconst; // Referencia a name_basics.nconst
+    @Column(name = "nconst", length = 15)
+    private String nconst; // Ahora solo es un campo normal con FK
 
-    @Column(name = "category", nullable = false)
+    @Column(name = "category", nullable = false, length = 50)
     private String category;
 
-    @Column(name = "job")
+    @Column(name = "job", length = 200)
     private String job;
 
-    @Column(name = "characters")
+    @Column(name = "characters", length = 200)
     private String characters;
 }

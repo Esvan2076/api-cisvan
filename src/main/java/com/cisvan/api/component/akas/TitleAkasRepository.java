@@ -10,6 +10,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface TitleAkasRepository extends JpaRepository<TitleAkas, TitleAkasId> {
 
-    @Query("SELECT ta FROM TitleAkas ta WHERE ta.id.titleId = :titleId")
-    List<TitleAkas> findByTitleId(@Param("titleId") String titleId);
+    @Query("SELECT ta FROM TitleAkas ta WHERE ta.id.tconst = :tconst")
+    List<TitleAkas> findByTconst(@Param("tconst") String tconst);
 }
