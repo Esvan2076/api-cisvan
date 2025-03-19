@@ -43,7 +43,7 @@ public class TitleBasics {
     private List<String> genres; // Cambiado a List<String> para reflejar el array en PostgreSQL
 
     @Column(name = "poster_url", length = 100)
-    private String posterUrl;
+    protected String posterUrl;
 
     // Modificar la URL al obtener el valor
     public String getPosterUrl() {

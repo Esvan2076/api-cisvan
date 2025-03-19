@@ -22,8 +22,8 @@ public class TitleBasicsController {
     private ControllerHelper controllerHelper;
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getTitleById(@PathVariable("id") String nconst) {
-        return controllerHelper.handleOptional(titleBasicsService.findById(nconst));
+    public ResponseEntity<?> getTitleById(@PathVariable("id") String tconst) {
+        return controllerHelper.handleOptional(titleBasicsService.findById(tconst));
     }
 
     // Nuevo método para buscar por nombre
@@ -34,5 +34,10 @@ public class TitleBasicsController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(results);
+    }
+
+    @GetMapping("title/{id}")
+    public ResponseEntity<?> getTitleBasicById(@PathVariable("id") String tconst) {
+        return controllerHelper.handleOptional(titleBasicsService.basicById(tconst));
     }
 }
