@@ -11,7 +11,7 @@ import lombok.Data;
 public class TitleBasics {
 
     private static final String IMAGE_BASE_URL = "https://m.media-amazon.com/images/M/";
-    private static final String IMAGE_SUFFIX = "._V1_SX500.jpg";
+    private static final String IMAGE_SUFFIX = "._V1_SX300.jpg";
     private static final String IMAGE_DEFAULT_URL = "https://cisvan.s3.us-west-1.amazonaws.com/1.jpg";
 
     @Id
@@ -47,9 +47,16 @@ public class TitleBasics {
 
     // Modificar la URL al obtener el valor
     public String getPosterUrl() {
-        if (posterUrl != null && !posterUrl.isEmpty()) {
-            return IMAGE_BASE_URL + posterUrl + IMAGE_SUFFIX;
+        if (posterUrl == null || posterUrl.isEmpty()) {
+            return IMAGE_DEFAULT_URL;
         }
-        return IMAGE_DEFAULT_URL;
-    }
+    
+        // Si ya contiene una URL completa, la retorna tal cual
+        if (posterUrl.startsWith("http://") || posterUrl.startsWith("https://")) {
+            return posterUrl;
+        }
+    
+        // Si no, construye la URL basada en el patrón por defecto
+        return IMAGE_BASE_URL + posterUrl + IMAGE_SUFFIX;
+    }    
 }

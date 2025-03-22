@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.cisvan.api.component.name.dto.NameBasicsDTO;
 import com.cisvan.api.component.ratings.TitleRatings;
+import com.cisvan.api.component.streaming.Streaming;
 import com.cisvan.api.component.title.TitleBasics;
 
 import lombok.Data;
@@ -18,8 +19,5 @@ public class TitleBasicsDTO extends TitleBasics {
 
     private List<NameBasicsDTO> writers;
 
-    @Override
-    public String getPosterUrl() {
-        return posterUrl;
-    }
+    private List<Streaming> streamingServices;
 }
