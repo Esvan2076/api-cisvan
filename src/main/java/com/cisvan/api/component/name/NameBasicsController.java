@@ -32,4 +32,9 @@ public class NameBasicsController {
         }
         return ResponseEntity.ok(results);
     }
+
+    @GetMapping("/{nconst}/known-for")
+    public ResponseEntity<?> getKnownForTitles(@PathVariable String nconst) {
+        return ResponseEntity.ok(nameBasicsService.getKnownForTitles(nconst));
+    }
 }

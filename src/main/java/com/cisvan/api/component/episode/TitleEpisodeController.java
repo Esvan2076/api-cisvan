@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.cisvan.api.component.title.dto.EpisodeSummaryDTO;
 import com.cisvan.api.helper.ControllerHelper;
 
 @RestController
@@ -43,6 +44,20 @@ public class TitleEpisodeController {
         if (episodes.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+        return ResponseEntity.ok(episodes);
+    }
+
+    @GetMapping("/series/summary/{tconst}")
+    public ResponseEntity<?> getSeriesSummary(@PathVariable String tconst) {
+        return controllerHelper.handleOptional(titleEpisodeService.getSeriesSeasonSummary(tconst));
+    }
+
+    @GetMapping("/series/{tconst}/season/{seasonNumber}")
+    public ResponseEntity<?> getEpisodesForSeason(
+        @PathVariable String tconst,
+        @PathVariable Short seasonNumber
+    ) {
+        List<EpisodeSummaryDTO> episodes = titleEpisodeService.getEpisodesBySeason(tconst, seasonNumber);
         return ResponseEntity.ok(episodes);
     }
 }

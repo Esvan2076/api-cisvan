@@ -21,4 +21,8 @@ public interface TitleEpisodeRepository extends JpaRepository<TitleEpisode, Stri
     // Buscar el parent_tconst de un episodio específico
     @Query("SELECT e.parentTconst FROM TitleEpisode e WHERE e.tconst = :tconst")
     Optional<String> findParentTconstByEpisodeTconst(@Param("tconst") String tconst);
+
+    @Query(value = "SELECT COUNT(DISTINCT season_number) FROM title_episode WHERE parent_tconst = :parentTconst", nativeQuery = true)
+    Integer countDistinctSeasonsByParentTconst(@Param("parentTconst") String parentTconst);
+
 }

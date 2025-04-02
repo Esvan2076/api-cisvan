@@ -11,4 +11,7 @@ import org.springframework.data.repository.query.Param;
 public interface TitlePrincipalsRepository extends JpaRepository<TitlePrincipals, TitlePrincipalsId> {
     @Query("SELECT ta FROM TitlePrincipals ta WHERE ta.id.tconst = :tconst")
     List<TitlePrincipals> findByTitleId(@Param("tconst") String tconst);
+
+    List<TitlePrincipals> findByIdTconst(String tconst);
+
 }
