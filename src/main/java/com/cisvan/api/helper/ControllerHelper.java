@@ -2,39 +2,59 @@ package com.cisvan.api.helper;
 
 import com.cisvan.api.common.OperationResult;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+
 import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.BindingResult;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Component
+@RequiredArgsConstructor
 public class ControllerHelper {
 
-    @Autowired
-    private MessageSource messageSource;
+    private final MessageSource messageSource;
 
     public OperationResult printAnnotationsErrors(BindingResult result) {
         List<OperationResult.ErrorDetail> errorDetails = new ArrayList<>();
+        Locale locale = LocaleContextHolder.getLocale(); // Obtener el idioma actual
     
         // Manejar errores de campo
         result.getFieldErrors().forEach(err -> {
-            String fieldName = err.getField();
-            String errorMessage = messageSource.getMessage(err, null);
+            String fullFieldName = err.getField(); // Ej: income.transactionId
+    
+            // Normalizar: quedarse solo con el último segmento del path
+            String normalizedField = fullFieldName.contains(".")
+                    ? fullFieldName.substring(fullFieldName.lastIndexOf('.') + 1)
+                    : fullFieldName;
+    
+            String translatedField = messageSource.getMessage("field." + normalizedField, null, locale);
+            String errorMessage = messageSource.getMessage(err, locale);
+    
             errorDetails.add(
-                OperationResult.ErrorDetail.builder().field(fieldName).message(errorMessage).build()
+                OperationResult.ErrorDetail.builder()
+                    .field(translatedField)
+                    .message(errorMessage)
+                    .build()
             );
         });
     
-        // Manejar errores globales (de la entidad)
+        // Manejar errores globales
         result.getGlobalErrors().forEach(err -> {
-            String errorMessage = messageSource.getMessage(err, null);
+            String translatedField = messageSource.getMessage("field." + err.getObjectName(), null, locale);
+            String errorMessage = messageSource.getMessage(err, locale);
+    
             errorDetails.add(
-                OperationResult.ErrorDetail.builder().field(err.getObjectName()).message(errorMessage).build()
+                OperationResult.ErrorDetail.builder()
+                    .field(translatedField)
+                    .message(errorMessage)
+                    .build()
             );
         });
     
@@ -44,4 +64,9 @@ public class ControllerHelper {
     public <T> ResponseEntity<T> handleOptional(Optional<T> optional) { 
         return optional.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
+
+    public OperationResult validate(BindingResult result) {
+        if (!result.hasErrors()) return new OperationResult();
+        return printAnnotationsErrors(result);
+    }    
 }
