@@ -12,4 +12,6 @@ public interface NameRepository extends JpaRepository<Name, String> {
 
     // Buscar múltiples NameBasics por una lista de nconst
     List<Name> findByNconstIn(List<String> nconsts);
+
+    List<Name> findTop5ByPrimaryNameIgnoreCaseContainingOrderByPrimaryNameAsc(String namePart);
 }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface TitleStreamRepository extends JpaRepository<TitleStream, TitleStreamId>{
+    
     // Obtener los IDs de streaming por tconst
     @Query("SELECT ts.id.streamingId FROM TitleStream ts WHERE ts.id.tconst = :tconst")
     List<Integer> findStreamingIdsByTconst(@Param("tconst") String tconst);

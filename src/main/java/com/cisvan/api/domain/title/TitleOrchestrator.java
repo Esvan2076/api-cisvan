@@ -1,10 +1,14 @@
 package com.cisvan.api.domain.title;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Service;
 
+import com.cisvan.api.domain.akas.services.AkasLogicService;
 import com.cisvan.api.domain.crew.CrewRepository;
 import com.cisvan.api.domain.name.dto.NameBasicDTO;
 import com.cisvan.api.domain.name.services.NameLogicService;
@@ -28,6 +32,7 @@ public class TitleOrchestrator {
     private final NameLogicService nameLogicService;
     private final TitleMapper titleMapper;
     private final StreamingLogicService streamingLogicService;
+    private final AkasLogicService akasLogicService;
 
     public Optional<TitleBasicDTO> getTitleBasicById(String tconst) {
         Optional<Title> titleOpt = titleService.getTitleById(tconst);
@@ -44,15 +49,25 @@ public class TitleOrchestrator {
 
         // Directores y escritores
         crewRepository.findById(tconst).ifPresent(titleCrew -> {
+            List<String> directors = Optional.ofNullable(titleCrew.getDirectors()).orElse(Collections.emptyList());
+            List<String> writers = Optional.ofNullable(titleCrew.getWriters()).orElse(Collections.emptyList());
+        
             List<NameBasicDTO> directos = nameLogicService.getNameBasicsDTOsByIds(
-                titleCrew.getDirectors().stream().limit(3).toList()
+                directors.stream().limit(3).toList()
             );
-            List<NameBasicDTO> writers = nameLogicService.getNameBasicsDTOsByIds(
-                titleCrew.getWriters().stream().limit(3).toList()
+            List<NameBasicDTO> writersList = nameLogicService.getNameBasicsDTOsByIds(
+                writers.stream().limit(3).toList()
             );
+        
             detailDTO.setDirectos(directos);
-            detailDTO.setWriters(writers);
-        });
+            detailDTO.setWriters(writersList);
+        });        
+
+        Locale locale = LocaleContextHolder.getLocale();
+        if ("es".equalsIgnoreCase(locale.getLanguage())) {
+            // Cambiar el título si hay una traducción al español
+            akasLogicService.overrideTitleInSpanish(detailDTO);
+        }
 
         // Ratings
         ratingRepository.findById(tconst).ifPresent(detailDTO::setRatings);

@@ -13,7 +13,7 @@ import com.cisvan.api.helper.ControllerHelper;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/episodes")
+@RequestMapping("/episode")
 @RequiredArgsConstructor
 public class EpisodeController {
 
