@@ -9,12 +9,12 @@ import org.springframework.stereotype.Service;
 
 import com.cisvan.api.domain.episode.Episode;
 import com.cisvan.api.domain.episode.EpisodeRepository;
-import com.cisvan.api.domain.rating.Rating;
-import com.cisvan.api.domain.rating.RatingRepository;
 import com.cisvan.api.domain.title.Title;
 import com.cisvan.api.domain.title.TitleRepository;
 import com.cisvan.api.domain.title.dtos.EpisodeSummaryDTO;
 import com.cisvan.api.domain.title.dtos.SeriesSeasonsDTO;
+import com.cisvan.api.domain.titlerating.TitleRating;
+import com.cisvan.api.domain.titlerating.TitleRatingRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,7 +24,7 @@ public class EpisodeLogicService {
 
     private final EpisodeRepository episodeRepository;
     private final TitleRepository titleRepository;
-    private final RatingRepository ratingRepository;
+    private final TitleRatingRepository ratingRepository;
 
     // Determinar el tconst de búsqueda, usando el parent si es episodio
     public String resolveSearchTconst(String tconst, String titleType) {
@@ -67,7 +67,7 @@ public class EpisodeLogicService {
                 if (epTitleOpt.isEmpty()) return null;
 
                 Title epTitle = epTitleOpt.get();
-                Optional<Rating> ratingOpt = ratingRepository.findById(ep.getTconst());
+                Optional<TitleRating> ratingOpt = ratingRepository.findById(ep.getTconst());
 
                 EpisodeSummaryDTO dto = new EpisodeSummaryDTO();
                 dto.setEpisodeNumber(ep.getEpisodeNumber());

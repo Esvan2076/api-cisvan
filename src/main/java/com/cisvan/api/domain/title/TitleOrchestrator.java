@@ -1,5 +1,6 @@
 package com.cisvan.api.domain.title;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -10,14 +11,14 @@ import org.springframework.stereotype.Service;
 
 import com.cisvan.api.domain.akas.services.AkasLogicService;
 import com.cisvan.api.domain.crew.CrewRepository;
-import com.cisvan.api.domain.name.dto.NameBasicDTO;
+import com.cisvan.api.domain.name.dto.NameEssencialDTO;
 import com.cisvan.api.domain.name.services.NameLogicService;
-import com.cisvan.api.domain.rating.RatingRepository;
 import com.cisvan.api.domain.streaming.services.StreamingLogicService;
 import com.cisvan.api.domain.title.dtos.TitleBasicDTO;
 import com.cisvan.api.domain.title.mappers.TitleMapper;
 import com.cisvan.api.domain.title.services.TitleLogicService;
 import com.cisvan.api.domain.title.services.TitleService;
+import com.cisvan.api.domain.titlerating.TitleRatingRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,7 +27,7 @@ import lombok.RequiredArgsConstructor;
 public class TitleOrchestrator {
 
     private final CrewRepository crewRepository;
-    private final RatingRepository ratingRepository;
+    private final TitleRatingRepository ratingRepository;
     private final TitleLogicService titleLogicService;
     private final TitleService titleService;
     private final NameLogicService nameLogicService;
@@ -52,10 +53,10 @@ public class TitleOrchestrator {
             List<String> directors = Optional.ofNullable(titleCrew.getDirectors()).orElse(Collections.emptyList());
             List<String> writers = Optional.ofNullable(titleCrew.getWriters()).orElse(Collections.emptyList());
         
-            List<NameBasicDTO> directos = nameLogicService.getNameBasicsDTOsByIds(
+            List<NameEssencialDTO> directos = nameLogicService.getNameBasicsDTOsByIds(
                 directors.stream().limit(3).toList()
             );
-            List<NameBasicDTO> writersList = nameLogicService.getNameBasicsDTOsByIds(
+            List<NameEssencialDTO> writersList = nameLogicService.getNameBasicsDTOsByIds(
                 writers.stream().limit(3).toList()
             );
         
@@ -70,11 +71,22 @@ public class TitleOrchestrator {
         }
 
         // Ratings
-        ratingRepository.findById(tconst).ifPresent(detailDTO::setRatings);
+        ratingRepository.findById(tconst).ifPresent(detailDTO::setTitleRatings);
 
         // Streaming
         detailDTO.setStreamingServices(streamingLogicService.getStreamingServicesByTitle(tconst));
 
         return Optional.of(detailDTO);
     }
+
+    public List<Object> searchEverything(String query) {
+        List<Object> results = new ArrayList<>();
+
+        results.addAll(titleLogicService.searchMovies(query));
+        results.addAll(titleLogicService.searchSeries(query));
+        results.addAll(nameLogicService.searchNames(query));
+
+        return results.stream().limit(10).toList();
+    }
+
 }

@@ -19,12 +19,18 @@ public class NameController {
 
     private final NameService nameService;
     private final NameLogicService nameLogicService;
+    private final NameOrchestrator nameOrchestrator;
     private final ControllerHelper controllerHelper;
 
     @GetMapping("/{id}")
     public ResponseEntity<?> fetchNameById(@PathVariable("id") String nconst) {
         return controllerHelper.handleOptional(nameService.findById(nconst));
-    }    
+    }
+
+    @GetMapping("/basic/{id}")
+    public ResponseEntity<?> fetchTitleBasicById(@PathVariable("id") String tconst) {
+        return controllerHelper.handleOptional(nameOrchestrator.getNameBasicById(tconst));
+    }
 
     @GetMapping("/by-name/{name}")
     public ResponseEntity<List<Name>> fetchNameByName(@PathVariable("name") String name) {

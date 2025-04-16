@@ -1,4 +1,4 @@
-package com.cisvan.api.domain.rating;
+package com.cisvan.api.domain.titlerating;
 
 import jakarta.persistence.*;
 import lombok.Data;
@@ -7,7 +7,7 @@ import java.math.BigDecimal;
 @Entity
 @Data
 @Table(name = "title_ratings")
-public class Rating {
+public class TitleRating {
 
     @Id
     @Column(name = "tconst", length = 15, nullable = false)

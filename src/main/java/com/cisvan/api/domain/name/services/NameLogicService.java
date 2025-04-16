@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.cisvan.api.domain.name.Name;
 import com.cisvan.api.domain.name.NameRepository;
-import com.cisvan.api.domain.name.dto.NameBasicDTO;
+import com.cisvan.api.domain.name.dto.NameEssencialDTO;
 import com.cisvan.api.domain.name.dto.NameSearchResultDTO;
 import com.cisvan.api.domain.name.mapper.NameMapper;
 import com.cisvan.api.domain.title.TitleRepository;
@@ -22,7 +22,7 @@ public class NameLogicService {
     private final TitleRepository titleRepository;
     private final NameMapper nameMapper;
 
-    public List<NameBasicDTO> getNameBasicsDTOsByIds(List<String> nconsts) {
+    public List<NameEssencialDTO> getNameBasicsDTOsByIds(List<String> nconsts) {
         return nameRepository.findByNconstIn(nconsts)
                 .stream()
                 .map(nameMapper::toDTO)

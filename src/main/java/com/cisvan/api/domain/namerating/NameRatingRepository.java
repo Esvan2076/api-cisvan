@@ -1,9 +1,9 @@
-package com.cisvan.api.domain.rating;
+package com.cisvan.api.domain.namerating;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface RatingRepository extends JpaRepository<Rating, String> {
+public interface NameRatingRepository extends JpaRepository<NameRating, String> {
 
 }

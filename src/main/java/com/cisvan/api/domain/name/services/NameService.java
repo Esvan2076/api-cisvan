@@ -4,11 +4,11 @@ import org.springframework.stereotype.Service;
 
 import com.cisvan.api.domain.name.Name;
 import com.cisvan.api.domain.name.NameRepository;
-import com.cisvan.api.domain.name.dto.NameBasicDTO;
+import com.cisvan.api.domain.name.dto.NameEssencialDTO;
 import com.cisvan.api.domain.name.mapper.NameMapper;
-import com.cisvan.api.domain.rating.RatingRepository;
 import com.cisvan.api.domain.title.TitleRepository;
 import com.cisvan.api.domain.title.dtos.TitleKnownForDTO;
+import com.cisvan.api.domain.titlerating.TitleRatingRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,7 +23,7 @@ public class NameService {
     private final NameRepository nameRepository;
     private final NameMapper nameMapper;
     private final TitleRepository titleRepository;
-    private final RatingRepository ratingRepository;
+    private final TitleRatingRepository ratingRepository;
 
     public Optional<Name> findById(String nconst) {
         return nameRepository.findById(nconst);
@@ -33,7 +33,7 @@ public class NameService {
         return nameRepository.findByPrimaryNameContainingIgnoreCase(name);
     }
 
-    public List<NameBasicDTO> findNameBasicsByIds(List<String> nconsts) {
+    public List<NameEssencialDTO> findNameBasicsByIds(List<String> nconsts) {
         return nameRepository.findByNconstIn(nconsts)
                 .stream()
                 .map(nameMapper::toDTO) // Usa MapStruct
@@ -54,7 +54,7 @@ public class NameService {
                         dto.setPosterUrl(tb.getPosterUrl()); // ya viene con la URL completa
                     });
     
-                    ratingRepository.findById(tconst).ifPresent(dto::setRatings);
+                    ratingRepository.findById(tconst).ifPresent(dto::setTitleRatings);
     
                     return dto;
                 }).toList()
