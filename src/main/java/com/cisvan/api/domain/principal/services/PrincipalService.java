@@ -5,7 +5,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.cisvan.api.domain.name.NameRepository;
+import com.cisvan.api.domain.name.repos.NameRepository;
 import com.cisvan.api.domain.principal.Principal;
 import com.cisvan.api.domain.principal.PrincipalRepository;
 import com.cisvan.api.domain.principal.dtos.CastMemberDTO;

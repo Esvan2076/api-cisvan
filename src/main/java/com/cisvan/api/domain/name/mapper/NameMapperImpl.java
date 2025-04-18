@@ -1,6 +1,7 @@
 package com.cisvan.api.domain.name.mapper;
 
 import com.cisvan.api.domain.name.Name;
+import com.cisvan.api.domain.name.dto.NameAdvancedSearchResultDTO;
 import com.cisvan.api.domain.name.dto.NameBasicDTO;
 import com.cisvan.api.domain.name.dto.NameEssencialDTO;
 import com.cisvan.api.domain.name.dto.NameSearchResultDTO;
@@ -79,5 +80,25 @@ public class NameMapperImpl implements NameMapper {
         principalTitleDTO.setEndYear( title.getEndYear() );
 
         return principalTitleDTO;
+    }
+
+    @Override
+    public NameAdvancedSearchResultDTO toAdvancedSearchResultDTO(Name name) {
+        if ( name == null ) {
+            return null;
+        }
+
+        NameAdvancedSearchResultDTO nameAdvancedSearchResultDTO = new NameAdvancedSearchResultDTO();
+
+        nameAdvancedSearchResultDTO.setNconst( name.getNconst() );
+        nameAdvancedSearchResultDTO.setPrimaryName( name.getPrimaryName() );
+        nameAdvancedSearchResultDTO.setBirthYear( name.getBirthYear() );
+        List<String> list = name.getPrimaryProfession();
+        if ( list != null ) {
+            nameAdvancedSearchResultDTO.setPrimaryProfession( new ArrayList<String>( list ) );
+        }
+        nameAdvancedSearchResultDTO.setImageUrl( name.getImageUrl() );
+
+        return nameAdvancedSearchResultDTO;
     }
 }

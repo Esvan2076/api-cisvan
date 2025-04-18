@@ -9,12 +9,12 @@ import org.springframework.stereotype.Service;
 import com.cisvan.api.domain.episode.Episode;
 import com.cisvan.api.domain.episode.EpisodeRepository;
 import com.cisvan.api.domain.name.Name;
-import com.cisvan.api.domain.name.NameRepository;
+import com.cisvan.api.domain.name.repos.NameRepository;
 import com.cisvan.api.domain.principal.PrincipalRepository;
 import com.cisvan.api.domain.title.Title;
-import com.cisvan.api.domain.title.TitleRepository;
 import com.cisvan.api.domain.title.dtos.searchDTO.MovieSearchResultDTO;
 import com.cisvan.api.domain.title.dtos.searchDTO.SerieSearchResultDTO;
+import com.cisvan.api.domain.title.repos.TitleRepository;
 
 import lombok.RequiredArgsConstructor;
 

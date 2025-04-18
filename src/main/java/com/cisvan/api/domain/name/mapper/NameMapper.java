@@ -3,6 +3,7 @@ package com.cisvan.api.domain.name.mapper;
 import org.mapstruct.Mapping;
 
 import com.cisvan.api.domain.name.Name;
+import com.cisvan.api.domain.name.dto.NameAdvancedSearchResultDTO;
 import com.cisvan.api.domain.name.dto.NameBasicDTO;
 import com.cisvan.api.domain.name.dto.NameEssencialDTO;
 import com.cisvan.api.domain.name.dto.NameSearchResultDTO;
@@ -20,4 +21,6 @@ public interface NameMapper {
     NameSearchResultDTO toSearchResultDTO(Name name);
 
     PrincipalTitleDTO toPrincipalTitleDTO(Title title);
+
+    NameAdvancedSearchResultDTO toAdvancedSearchResultDTO(Name name);
 }

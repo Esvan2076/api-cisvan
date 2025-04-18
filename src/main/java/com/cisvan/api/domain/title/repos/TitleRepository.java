@@ -1,4 +1,4 @@
-package com.cisvan.api.domain.title;
+package com.cisvan.api.domain.title.repos;
 
 import java.util.List;
 
@@ -8,8 +8,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.cisvan.api.domain.title.Title;
+
 @Repository
-public interface TitleRepository extends JpaRepository<Title, String>{
+public interface TitleRepository extends JpaRepository<Title, String>, TitleCustomRepository {
     
     List<Title> findByPrimaryTitleContainingIgnoreCase(String primaryName);
 
@@ -32,4 +34,6 @@ public interface TitleRepository extends JpaRepository<Title, String>{
         ORDER BY r.numVotes DESC
     """)
     List<Title> findTop5SeriesWithRatingOrder(@Param("query") String query, PageRequest pageable);
+
+    
 }

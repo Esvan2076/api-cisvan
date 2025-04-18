@@ -2,9 +2,12 @@ package com.cisvan.api.domain.name;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.cisvan.api.domain.name.dto.NameAdvancedSearchDTO;
+import com.cisvan.api.domain.name.dto.NameAdvancedSearchResultDTO;
 import com.cisvan.api.domain.name.dto.NameSearchResultDTO;
 import com.cisvan.api.domain.name.services.NameLogicService;
 import com.cisvan.api.domain.name.services.NameService;
@@ -39,11 +42,19 @@ public class NameController {
 
     @GetMapping("/{nconst}/known-for")
     public ResponseEntity<?> fetchNameKnownFor(@PathVariable String nconst) {
-        return ResponseEntity.ok(nameService.getKnownForTitles(nconst));
+        return ResponseEntity.ok(nameLogicService.getKnownForTitles(nconst));
     }
 
     @GetMapping("/search")
     public ResponseEntity<List<NameSearchResultDTO>> searchNames(@RequestParam("query") String query) {
         return ResponseEntity.ok(nameLogicService.searchNames(query));
+    }
+
+    @PostMapping("/advanced-search")
+    public ResponseEntity<Page<NameAdvancedSearchResultDTO>> fetchAdvancedNames(
+            @RequestBody NameAdvancedSearchDTO filters,
+            @RequestParam(defaultValue = "0") int page
+    ) {
+        return ResponseEntity.ok(nameOrchestrator.searchAdvancedNames(filters, page));
     }
 }

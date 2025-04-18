@@ -1,12 +1,14 @@
-package com.cisvan.api.domain.name;
+package com.cisvan.api.domain.name.repos;
 
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import com.cisvan.api.domain.name.Name;
+
 @Repository
-public interface NameRepository extends JpaRepository<Name, String> {
+public interface NameRepository extends JpaRepository<Name, String>, NameCustomRepository {
 
     List<Name> findByPrimaryNameContainingIgnoreCase(String primaryName);
 

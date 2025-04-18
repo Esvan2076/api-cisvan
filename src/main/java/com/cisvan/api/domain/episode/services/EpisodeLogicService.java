@@ -10,9 +10,9 @@ import org.springframework.stereotype.Service;
 import com.cisvan.api.domain.episode.Episode;
 import com.cisvan.api.domain.episode.EpisodeRepository;
 import com.cisvan.api.domain.title.Title;
-import com.cisvan.api.domain.title.TitleRepository;
 import com.cisvan.api.domain.title.dtos.EpisodeSummaryDTO;
 import com.cisvan.api.domain.title.dtos.SeriesSeasonsDTO;
+import com.cisvan.api.domain.title.repos.TitleRepository;
 import com.cisvan.api.domain.titlerating.TitleRating;
 import com.cisvan.api.domain.titlerating.TitleRatingRepository;
 

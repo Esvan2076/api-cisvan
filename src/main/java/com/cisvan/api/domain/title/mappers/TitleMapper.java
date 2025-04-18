@@ -1,13 +1,12 @@
 package com.cisvan.api.domain.title.mappers;
 
-import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 import com.cisvan.api.domain.title.Title;
 import com.cisvan.api.domain.title.dtos.TitleBasicDTO;
 import com.cisvan.api.domain.title.dtos.TitleDTO;
+import com.cisvan.api.domain.title.dtos.TitleKnownForDTO;
 
-@Mapper(componentModel = "spring")
 public interface TitleMapper {
 
     @Mapping(target = "titleRatings", ignore = true)
@@ -21,4 +20,7 @@ public interface TitleMapper {
     @Mapping(target = "directos", ignore = true)
     @Mapping(target = "writers", ignore = true)
     TitleBasicDTO toDTO(TitleDTO titleDTO);
+
+    @Mapping(target = "titleRatings", ignore = true)
+    TitleKnownForDTO toKnownForDTO(Title title);
 }
