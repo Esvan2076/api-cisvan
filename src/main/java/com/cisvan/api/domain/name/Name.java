@@ -2,6 +2,8 @@ package com.cisvan.api.domain.name;
 
 import jakarta.persistence.*;
 import lombok.Data;
+
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -29,7 +31,7 @@ public class Name {
     private List<String> primaryProfession; // Cambiado a List<String> para reflejar el array en PostgreSQL
 
     @Column(name = "known_for_titles", columnDefinition = "TEXT[]")
-    private List<String> knownForTitles; // Cambiado a List<String> para reflejar el array en PostgreSQL
+    private List<String> knownForTitles = new ArrayList<>(); // Cambiado a List<String> para reflejar el array en PostgreSQL
 
     @Column(name = "image_url", length = 100)
     private String imageUrl;

@@ -11,25 +11,40 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
+@Table(name = "users")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "users")
 public class Users {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
     private Long id;
 
-    @Column(name = "username", length = 50)
+    @Column(nullable = false, unique = true, length = 50)
     private String username;
 
-    @Column(name = "password", length = 60)
+    @Column(nullable = false, length = 60)
     private String password;
 
-    @Column(name = "admin")
+    @Column(nullable = false, unique = true, length = 100)
+    private String email;
+
+    @Column(name = "email_verified")
+    private Boolean emailVerified;
+
+    @Column(name = "email_verification_code", length = 10)
+    private String emailVerificationCode;
+
+    @Column(name = "password_reset_code", length = 10)
+    private String passwordResetCode;
+
+    @Column(name = "password_reset_expires_at")
+    private LocalDateTime passwordResetExpiresAt;
+
     private Boolean admin;
 }

@@ -12,6 +12,18 @@ public interface UsersRepository extends JpaRepository<Users, Long> {
 
     Optional<Users> findByUsername(String username);
 
+    Optional<Users> findByEmail(String email);
+
+    Optional<Users> findByUsernameOrEmail(String username, String email);
+
+    boolean existsByEmail(String email);
+
     @Query("SELECT u.id FROM Users u WHERE u.username = :username")
     Long findIdByUsername(@Param("username") String username);
+
+    // ✅ Verificación por correo usando email + código
+    Optional<Users> findByEmailAndEmailVerificationCode(String email, String code);
+
+    // ✅ Recuperación de contraseña usando email + código
+    Optional<Users> findByEmailAndPasswordResetCode(String email, String code);
 }

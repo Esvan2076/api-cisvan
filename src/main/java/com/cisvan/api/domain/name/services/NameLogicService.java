@@ -1,6 +1,7 @@
 package com.cisvan.api.domain.name.services;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -63,23 +64,29 @@ public class NameLogicService {
     }
 
     public List<TitleKnownForDTO> getKnownForTitles(String nconst) {
-        return nameRepository.findById(nconst)
-            .map(name -> name.getKnownForTitles().stream()
-                .map(tconst -> {
-                    TitleKnownForDTO dto = new TitleKnownForDTO();
-                    dto.setTconst(tconst);
+        Optional<Name> nameOpt = nameRepository.findById(nconst);
     
-                    titleRepository.findById(tconst).ifPresent(tb -> {
-                        dto.setTitleType(tb.getTitleType());
-                        dto.setPrimaryTitle(tb.getPrimaryTitle());
-                        dto.setStartYear(tb.getStartYear());
-                        dto.setPosterUrl(tb.getPosterUrl()); // ya viene con la URL completa
-                    });
+        if (nameOpt.isEmpty()) return List.of();
     
-                    ratingRepository.findById(tconst).ifPresent(dto::setTitleRatings);
+        List<String> knownForTitles = nameOpt.get().getKnownForTitles();
+        if (knownForTitles == null || knownForTitles.isEmpty()) return List.of();
     
-                    return dto;
-                }).toList()
-            ).orElse(List.of());
-    }
+        return knownForTitles.stream()
+            .map(tconst -> {
+                TitleKnownForDTO dto = new TitleKnownForDTO();
+                dto.setTconst(tconst);
+    
+                titleRepository.findById(tconst).ifPresent(tb -> {
+                    dto.setTitleType(tb.getTitleType());
+                    dto.setPrimaryTitle(tb.getPrimaryTitle());
+                    dto.setStartYear(tb.getStartYear());
+                    dto.setPosterUrl(tb.getPosterUrl());
+                });
+    
+                ratingRepository.findById(tconst).ifPresent(dto::setTitleRatings);
+    
+                return dto;
+            })
+            .toList();
+    }    
 }
