@@ -4,30 +4,19 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
-import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
-import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
 import java.util.Date;
 import java.util.function.Function;
 
 @Service
 public class JwtService {
 
-    private String secretkey = "";
-
-    public JwtService() {
-        try {
-            KeyGenerator keyGen = KeyGenerator.getInstance("HmacSHA256");
-            SecretKey sk = keyGen.generateKey();
-            secretkey = Base64.getEncoder().encodeToString(sk.getEncoded());
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-    }
+    @Value("${jwt.secret}")
+    private String secretkey;
 
     public String generateToken(Long userId, String username, Boolean admin) {
         return Jwts.builder()
@@ -35,7 +24,7 @@ public class JwtService {
                 .claim("username", username)
                 .claim("admin", admin)
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 60 * 60 * 30)) // 30 minutos
+                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 30)) // 30 minutos
                 .signWith(getKey())
                 .compact();
     }
@@ -54,7 +43,26 @@ public class JwtService {
 
     public boolean validateToken(String token, UserDetails userDetails) {
         final String userName = extractUserName(token);
-        return (userName.equals(userDetails.getUsername()) && !isTokenExpired(token));
+        return userName.equals(userDetails.getUsername()) && !isTokenExpired(token);
+    }
+
+    public boolean isTokenStructureValid(String token) {
+        return token != null && token.split("\\.").length == 3;
+    }
+
+    public boolean isTokenValid(String token) {
+        try {
+            extractAllClaims(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public boolean isValidTokenForUser(String token, UserDetails userDetails) {
+        return isTokenStructureValid(token) &&
+               isTokenValid(token) &&
+               validateToken(token, userDetails);
     }
 
     private boolean isTokenExpired(String token) {

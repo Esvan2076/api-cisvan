@@ -75,7 +75,7 @@ public class TitleOrchestrator {
         Locale locale = LocaleContextHolder.getLocale();
         if ("es".equalsIgnoreCase(locale.getLanguage())) {
             // Cambiar el título si hay una traducción al español
-            akasLogicService.overrideTitleInSpanish(detailDTO);
+            akasLogicService.trySetSpanishTitle(detailDTO);
         }
 
         // Ratings

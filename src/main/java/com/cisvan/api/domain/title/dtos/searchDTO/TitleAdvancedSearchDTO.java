@@ -1,10 +1,18 @@
 package com.cisvan.api.domain.title.dtos.searchDTO;
 
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.List;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class TitleAdvancedSearchDTO {
 
     // Nombre parcial o completo del título

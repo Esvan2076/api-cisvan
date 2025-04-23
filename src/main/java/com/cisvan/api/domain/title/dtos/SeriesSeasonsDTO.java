@@ -1,8 +1,16 @@
 package com.cisvan.api.domain.title.dtos;
 
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class SeriesSeasonsDTO {
     
     private String seriesTconst;

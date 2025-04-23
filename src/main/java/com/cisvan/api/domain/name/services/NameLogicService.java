@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.cisvan.api.domain.name.Name;
 import com.cisvan.api.domain.name.dto.NameEssencialDTO;
@@ -56,37 +57,30 @@ public class NameLogicService {
         }).toList();
     }
 
-    public List<NameEssencialDTO> findNameBasicsByIds(List<String> nconsts) {
-        return nameRepository.findByNconstIn(nconsts)
-                .stream()
-                .map(nameMapper::toDTO) // Usa MapStruct
-                .collect(Collectors.toList());
-    }
-
+    @Transactional(readOnly = true)
     public List<TitleKnownForDTO> getKnownForTitles(String nconst) {
         Optional<Name> nameOpt = nameRepository.findById(nconst);
-    
         if (nameOpt.isEmpty()) return List.of();
-    
+
         List<String> knownForTitles = nameOpt.get().getKnownForTitles();
         if (knownForTitles == null || knownForTitles.isEmpty()) return List.of();
-    
+
         return knownForTitles.stream()
             .map(tconst -> {
                 TitleKnownForDTO dto = new TitleKnownForDTO();
                 dto.setTconst(tconst);
-    
+
                 titleRepository.findById(tconst).ifPresent(tb -> {
                     dto.setTitleType(tb.getTitleType());
                     dto.setPrimaryTitle(tb.getPrimaryTitle());
                     dto.setStartYear(tb.getStartYear());
                     dto.setPosterUrl(tb.getPosterUrl());
                 });
-    
+
                 ratingRepository.findById(tconst).ifPresent(dto::setTitleRatings);
-    
+
                 return dto;
             })
             .toList();
-    }    
+    }
 }

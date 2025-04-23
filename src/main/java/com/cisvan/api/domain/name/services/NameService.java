@@ -3,6 +3,7 @@ package com.cisvan.api.domain.name.services;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.cisvan.api.domain.name.Name;
 import com.cisvan.api.domain.name.dto.NameAdvancedSearchDTO;
@@ -13,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 import java.util.Optional;
-
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +29,7 @@ public class NameService {
         return nameRepository.findByPrimaryNameContainingIgnoreCase(name);
     }
 
+    @Transactional(readOnly = true)
     public Page<Name> advancedSearch(NameAdvancedSearchDTO criteria, Pageable pageable) {
         return nameRepository.advancedSearch(criteria, pageable);
     }

@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.cisvan.api.domain.episode.Episode;
 import com.cisvan.api.domain.episode.EpisodeRepository;
@@ -26,20 +27,17 @@ public class EpisodeLogicService {
     private final TitleRepository titleRepository;
     private final TitleRatingRepository ratingRepository;
 
-    // Determinar el tconst de búsqueda, usando el parent si es episodio
+    @Transactional(readOnly = true)
     public String resolveSearchTconst(String tconst, String titleType) {
-        if (!"tvEpisode".equalsIgnoreCase(titleType)) {
-            return tconst;
-        }
-        return episodeRepository.findParentTconstByEpisodeTconst(tconst).orElse(tconst);
+        return "tvEpisode".equalsIgnoreCase(titleType)
+                ? episodeRepository.findParentTconstByEpisodeTconst(tconst).orElse(tconst)
+                : tconst;
     }
 
-    // Obtener el resumen de temporadas de una serie desde un tconst (serie o episodio)
+    @Transactional(readOnly = true)
     public Optional<SeriesSeasonsDTO> getSeriesSeasonSummary(String tconst) {
         Optional<Title> seriesOpt = resolveParentSeries(tconst);
-        if (seriesOpt.isEmpty()) {
-            return Optional.empty();
-        }
+        if (seriesOpt.isEmpty()) return Optional.empty();
 
         Title series = seriesOpt.get();
         Integer seasonCount = episodeRepository.countDistinctSeasonsByParentTconst(series.getTconst());
@@ -52,39 +50,45 @@ public class EpisodeLogicService {
         return Optional.of(dto);
     }
 
-    // Obtener los episodios de una temporada para una serie dada
+    @Transactional(readOnly = true)
     public List<EpisodeSummaryDTO> getEpisodesBySeason(String tconst, Short seasonNumber) {
+        if (seasonNumber == null) return List.of();
+
         Optional<Title> seriesOpt = resolveParentSeries(tconst);
         if (seriesOpt.isEmpty()) return List.of();
 
         String parentTconst = seriesOpt.get().getTconst();
-
         List<Episode> episodes = episodeRepository.findByParentTconstAndSeasonNumber(parentTconst, seasonNumber);
 
         return episodes.stream()
-            .map(ep -> {
-                Optional<Title> epTitleOpt = titleRepository.findById(ep.getTconst());
-                if (epTitleOpt.isEmpty()) return null;
-
-                Title epTitle = epTitleOpt.get();
-                Optional<TitleRating> ratingOpt = ratingRepository.findById(ep.getTconst());
-
-                EpisodeSummaryDTO dto = new EpisodeSummaryDTO();
-                dto.setEpisodeNumber(ep.getEpisodeNumber());
-                dto.setTconst(ep.getTconst());
-                dto.setPrimaryTitle(epTitle.getPrimaryTitle());
-                ratingOpt.ifPresent(r -> {
-                    dto.setAverageRating(r.getAverageRating());
-                    dto.setNumVotes(r.getNumVotes());
-                });
-                return dto;
-            })
-            .filter(Objects::nonNull)
-            .sorted(Comparator.comparing(EpisodeSummaryDTO::getEpisodeNumber))
-            .toList();
+                .map(this::toEpisodeSummaryDTO)
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparing(EpisodeSummaryDTO::getEpisodeNumber))
+                .toList();
     }
 
-    // Resolver la serie base desde un tconst (puede ser serie o episodio)
+    @Transactional(readOnly = true)
+    private EpisodeSummaryDTO toEpisodeSummaryDTO(Episode ep) {
+        Optional<Title> epTitleOpt = titleRepository.findById(ep.getTconst());
+        if (epTitleOpt.isEmpty()) return null;
+
+        Title epTitle = epTitleOpt.get();
+        Optional<TitleRating> ratingOpt = ratingRepository.findById(ep.getTconst());
+
+        EpisodeSummaryDTO dto = new EpisodeSummaryDTO();
+        dto.setEpisodeNumber(ep.getEpisodeNumber());
+        dto.setTconst(ep.getTconst());
+        dto.setPrimaryTitle(epTitle.getPrimaryTitle());
+
+        ratingOpt.ifPresent(r -> {
+            dto.setAverageRating(r.getAverageRating());
+            dto.setNumVotes(r.getNumVotes());
+        });
+
+        return dto;
+    }
+
+    @Transactional(readOnly = true)
     private Optional<Title> resolveParentSeries(String tconst) {
         Optional<Title> titleOpt = titleRepository.findById(tconst);
         if (titleOpt.isEmpty()) return Optional.empty();

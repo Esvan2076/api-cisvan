@@ -4,37 +4,56 @@ import com.cisvan.api.common.OperationResult;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.BindingResult;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
 public class ControllerHelper {
 
+    private final MessageSource messageSource;
+
     public OperationResult printAnnotationsErrors(BindingResult result) {
         List<OperationResult.ErrorDetail> errorDetails = new ArrayList<>();
+        Locale locale = LocaleContextHolder.getLocale(); // Obtener el idioma actual
     
-        // Errores de campo
+        // Manejar errores de campo
         result.getFieldErrors().forEach(err -> {
+            String fullFieldName = err.getField(); // Ej: income.transactionId
+    
+            // Normalizar: quedarse solo con el último segmento del path
+            String normalizedField = fullFieldName.contains(".")
+                    ? fullFieldName.substring(fullFieldName.lastIndexOf('.') + 1)
+                    : fullFieldName;
+    
+            String translatedField = messageSource.getMessage("field." + normalizedField, null, locale);
+            String errorMessage = messageSource.getMessage(err, locale);
+    
             errorDetails.add(
                 OperationResult.ErrorDetail.builder()
-                    .field(err.getField()) // sin normalizar, tal cual lo manda el DTO
-                    .message(err.getDefaultMessage()) // mensaje directo de la anotación
+                    .field(translatedField)
+                    .message(errorMessage)
                     .build()
             );
         });
     
-        // Errores globales (por si usas @Valid a nivel de clase)
+        // Manejar errores globales
         result.getGlobalErrors().forEach(err -> {
+            String translatedField = messageSource.getMessage("field." + err.getObjectName(), null, locale);
+            String errorMessage = messageSource.getMessage(err, locale);
+    
             errorDetails.add(
                 OperationResult.ErrorDetail.builder()
-                    .field(err.getObjectName())
-                    .message(err.getDefaultMessage())
+                    .field(translatedField)
+                    .message(errorMessage)
                     .build()
             );
         });

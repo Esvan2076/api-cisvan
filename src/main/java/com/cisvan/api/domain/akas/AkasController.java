@@ -1,5 +1,7 @@
 package com.cisvan.api.domain.akas;
 
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,7 +20,7 @@ public class AkasController {
     private final AkasService akasService;
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> fetchAkasById(@PathVariable("id") String tconst) {
+    public ResponseEntity<List<Akas>> fetchAkasById(@PathVariable("id") String tconst) {
         return ResponseEntity.ok(akasService.getAkasById(tconst));
     }
 }

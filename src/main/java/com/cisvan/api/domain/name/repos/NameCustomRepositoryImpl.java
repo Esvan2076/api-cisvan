@@ -5,8 +5,10 @@ import com.cisvan.api.domain.name.dto.NameAdvancedSearchDTO;
 
 import jakarta.persistence.*;
 import jakarta.persistence.criteria.*;
+
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,10 +20,11 @@ public class NameCustomRepositoryImpl implements NameCustomRepository {
     private EntityManager entityManager;
 
     @Override
+    @Transactional(readOnly = true)
     public Page<Name> advancedSearch(NameAdvancedSearchDTO criteria, Pageable pageable) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
 
-        // Consulta principal
+        // Main query
         CriteriaQuery<Name> query = cb.createQuery(Name.class);
         Root<Name> name = query.from(Name.class);
         List<Predicate> predicates = buildPredicates(criteria, cb, query, name);
@@ -47,14 +50,17 @@ public class NameCustomRepositoryImpl implements NameCustomRepository {
         List<Predicate> predicates = new ArrayList<>();
 
         if (criteria.getName() != null && !criteria.getName().isBlank()) {
-            predicates.add(cb.like(cb.lower(name.get("primaryName")), "%" + criteria.getName().toLowerCase() + "%"));
+            String likePattern = "%" + criteria.getName().toLowerCase() + "%";
+            predicates.add(cb.like(cb.lower(name.get("primaryName")), likePattern));
         }
 
         if (criteria.getProfessions() != null && !criteria.getProfessions().isEmpty()) {
+            String[] professionsArray = criteria.getProfessions().toArray(new String[0]);
+
             Predicate professionOverlap = cb.isTrue(
                 cb.function("array_overlap", Boolean.class,
                     name.get("primaryProfession"),
-                    cb.literal(criteria.getProfessions().toArray(new String[0]))
+                    cb.literal(professionsArray)
                 )
             );
             predicates.add(professionOverlap);

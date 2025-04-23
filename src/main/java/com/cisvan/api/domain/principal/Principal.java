@@ -1,18 +1,27 @@
 package com.cisvan.api.domain.principal;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Data
 @Table(name = "title_principals")
+@Access(AccessType.FIELD)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Principal {
 
     @EmbeddedId
-    private PrincipalId id; // Clave compuesta (tconst, ordering)
+    private PrincipalId id;
 
     @Column(name = "nconst", length = 15)
-    private String nconst; // Ahora solo es un campo normal con FK
+    private String nconst;
 
     @Column(name = "category", nullable = false, length = 50)
     private String category;

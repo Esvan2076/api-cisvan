@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.cisvan.api.domain.episode.services.EpisodeLogicService;
 import com.cisvan.api.domain.streaming.Streaming;
@@ -23,6 +24,7 @@ public class StreamingLogicService {
     private final EpisodeLogicService episodeLogicService;
     private final TitleService titleService;
 
+    @Transactional(readOnly = true)
     public List<Streaming> getStreamingServicesByTitle(String tconst) {
         Optional<Title> titleOpt = titleService.getTitleById(tconst);
         if (titleOpt.isEmpty()) {
@@ -30,19 +32,19 @@ public class StreamingLogicService {
         }
 
         Title title = titleOpt.get();
-
-        // Resolver el tconst que realmente se usará para buscar servicios de streaming
         String searchTconst = episodeLogicService.resolveSearchTconst(tconst, title.getTitleType());
 
-        // Obtener los IDs desde title_stream
         List<Integer> streamingIds = titleStreamService.getStreamingsByTitleId(searchTconst);
 
-        // Traer máximo 4 servicios de streaming y filtrar los que existan
         return streamingIds.stream()
                 .limit(4)
-                .map(streamingRepository::findById)
+                .map(this::safeGetStreamingById)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toList();
+    }
+
+    private Optional<Streaming> safeGetStreamingById(Integer id) {
+        return streamingRepository.findById(id);
     }
 }

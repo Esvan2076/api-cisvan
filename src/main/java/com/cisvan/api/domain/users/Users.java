@@ -1,5 +1,7 @@
 package com.cisvan.api.domain.users;
 
+import jakarta.persistence.Access;
+import jakarta.persistence.AccessType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -8,17 +10,20 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Access(AccessType.FIELD)
 public class Users {
 
     @Id
@@ -34,8 +39,9 @@ public class Users {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    @Column(name = "email_verified")
-    private Boolean emailVerified;
+    @Builder.Default
+    @Column(name = "email_verified", nullable = false)
+    private Boolean emailVerified = false;
 
     @Column(name = "email_verification_code", length = 10)
     private String emailVerificationCode;
@@ -46,5 +52,7 @@ public class Users {
     @Column(name = "password_reset_expires_at")
     private LocalDateTime passwordResetExpiresAt;
 
-    private Boolean admin;
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean admin = false;
 }

@@ -1,33 +1,55 @@
 package com.cisvan.api.domain.akas;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Entity
-@Data
 @Table(name = "title_akas")
+@Access(AccessType.FIELD)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Akas {
 
     @EmbeddedId
-    private AkasId id; // Clave compuesta (tconst + ordering)
+    private AkasId id;
 
-    @Column(name = "title", columnDefinition = "TEXT")
+    @Column(name = "title", columnDefinition = "TEXT", nullable = true)
     private String title;
 
-    @Column(name = "region", length = 10)
+    @Column(name = "region", length = 10, nullable = true)
     private String region;
 
-    @Column(name = "language", length = 10)
+    @Column(name = "language", length = 10, nullable = true)
     private String language;
 
-    @Column(name = "types", columnDefinition = "TEXT[]")
-    private List<String> types; // Mapeo de array a List<String>
+    @Builder.Default
+    @Column(name = "types", columnDefinition = "VARCHAR(50)[]", nullable = true)
+    private List<String> types = new ArrayList<>();
 
-    @Column(name = "attributes", columnDefinition = "TEXT[]")
-    private List<String> attributes; // Mapeo de array a List<String>
+    @Builder.Default
+    @Column(name = "attributes", columnDefinition = "VARCHAR(50)[]", nullable = true)
+    private List<String> attributes = new ArrayList<>();
 
-    @Column(name = "is_original_title", columnDefinition = "BOOLEAN DEFAULT FALSE")
+    @Builder.Default
+    @Column(name = "is_original_title", columnDefinition = "BOOLEAN DEFAULT FALSE", nullable = true)
     private Boolean isOriginalTitle = false;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Akas akas)) return false;
+        return Objects.equals(id, akas.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
 }
