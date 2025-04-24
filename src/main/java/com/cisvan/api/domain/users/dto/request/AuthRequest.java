@@ -1,5 +1,6 @@
 package com.cisvan.api.domain.users.dto.request;
 
+import com.cisvan.api.validation.annotations.ValidPassword;
 import com.cisvan.api.validation.groups.BasicChecks;
 
 import jakarta.validation.GroupSequence;
@@ -25,7 +26,7 @@ public class AuthRequest {
     private String username;
 
     @NotBlank(message = "{NotBlank}")
-    @Size(groups = BasicChecks.class, min = 6, max = 60, message = "{SizeRange}")
+    @ValidPassword
     private String password;
 
     @NotBlank(message = "{NotBlank}")

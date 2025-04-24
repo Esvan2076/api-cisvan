@@ -1,5 +1,6 @@
 package com.cisvan.api.domain.users.dto.request;
 
+import com.cisvan.api.validation.annotations.ValidPassword;
 import com.cisvan.api.validation.groups.BasicChecks;
 
 import jakarta.validation.constraints.Email;
@@ -25,5 +26,6 @@ public class ResetPasswordRequest {
     private String code;
 
     @NotBlank(message = "{NotBlank}")
+    @ValidPassword
     private String newPassword;
 }

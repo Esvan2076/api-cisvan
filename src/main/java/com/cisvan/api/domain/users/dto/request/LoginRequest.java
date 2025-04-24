@@ -5,7 +5,6 @@ import com.cisvan.api.validation.groups.BasicChecks;
 import jakarta.validation.GroupSequence;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,6 +24,5 @@ public class LoginRequest {
     private String email;
 
     @NotBlank(message = "{NotBlank}")
-    @Size(groups = BasicChecks.class, min = 6, max = 60, message = "{SizeRange}")
     private String password;
 }

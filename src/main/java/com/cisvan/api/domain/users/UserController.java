@@ -38,23 +38,24 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response.get());
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, BindingResult result) {
+    @PostMapping("/resend-code")
+    public ResponseEntity<?> resendEmailVerificationCode(
+        @Valid @RequestBody EmailRequest request,
+        BindingResult result
+    ) {
         OperationResult operationResult = controllerHelper.validate(result);
         if (operationResult.hasErrors()) return ResponseEntity.badRequest().body(operationResult);
     
-        Optional<String> jwtOpt = userOrchestrator.login(request, operationResult);
-        if (operationResult.hasErrors()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(operationResult);
+        Optional<EmailVerificationResponse> response = userOrchestrator.resendEmailVerificationCode(
+            request.getEmail(), operationResult
+        );
     
-        return ResponseEntity.ok(jwtOpt.get());
+        if (operationResult.hasErrors()) {
+            return ResponseEntity.unprocessableEntity().body(operationResult);
+        }
+    
+        return ResponseEntity.ok(response.get());
     }
-
-    @GetMapping("/me")
-    public ResponseEntity<?> getMe(HttpServletRequest request) {
-        return userOrchestrator.getMe(request)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
-    }    
 
     @PostMapping("/verify-email")
     public ResponseEntity<?> verifyEmailByCode(
@@ -73,26 +74,18 @@ public class UserController {
         }
     
         return ResponseEntity.ok(jwtOpt.get());
-    }    
+    }
 
-    @PostMapping("/resend-code")
-    public ResponseEntity<?> resendEmailVerificationCode(
-        @Valid @RequestBody EmailRequest request,
-        BindingResult result
-    ) {
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, BindingResult result) {
         OperationResult operationResult = controllerHelper.validate(result);
         if (operationResult.hasErrors()) return ResponseEntity.badRequest().body(operationResult);
     
-        Optional<EmailVerificationResponse> response = userOrchestrator.resendEmailVerificationCode(
-            request.getEmail(), operationResult
-        );
+        Optional<String> jwtOpt = userOrchestrator.login(request, operationResult);
+        if (operationResult.hasErrors()) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(operationResult);
     
-        if (operationResult.hasErrors()) {
-            return ResponseEntity.unprocessableEntity().body(operationResult);
-        }
-    
-        return ResponseEntity.ok(response.get());
-    }    
+        return ResponseEntity.ok(jwtOpt.get());
+    }
 
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(
@@ -122,5 +115,12 @@ public class UserController {
         }
     
         return ResponseEntity.ok().build();
-    }    
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getMe(HttpServletRequest request) {
+        return userOrchestrator.getMe(request)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
+    }
 }

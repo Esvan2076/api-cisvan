@@ -144,10 +144,6 @@ public class UserOrchestrator {
         if (userOpt.isEmpty()) return Optional.empty();
     
         Users user = userOpt.get();
-
-        if (!userValidationService.validateEmailVerified(user, result)) {
-            return Optional.empty();
-        }
     
         String code = generate4DigitCode();
         user.setEmailVerificationCode(code);
