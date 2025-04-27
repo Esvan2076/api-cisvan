@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.cisvan.api.common.OperationResult;
 import com.cisvan.api.domain.users.Users;
@@ -83,6 +84,16 @@ public class UserValidationService {
             return false;
         }
 
+        return true;
+    }
+
+    public boolean validateImageSize(MultipartFile file, OperationResult result) {
+        // 2MB = 2 * 1024 * 1024 bytes
+        long maxSizeInBytes = 2 * 1024 * 1024;
+        if (file != null && file.getSize() > maxSizeInBytes) {
+            validationHelper.addObjectError("file", "FileTooLarge", result);
+            return false;
+        }
         return true;
     }
 }

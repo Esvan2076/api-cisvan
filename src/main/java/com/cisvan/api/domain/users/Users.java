@@ -55,4 +55,7 @@ public class Users {
     @Builder.Default
     @Column(nullable = false)
     private Boolean admin = false;
+
+    @Column(name = "profile_image_url", length = 300)
+    private String profileImageUrl;
 }

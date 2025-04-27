@@ -35,14 +35,19 @@ public class SecurityConfig {
                 .cors(withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/user/me").authenticated()
+                        .requestMatchers(
+                            "/user/me",
+                            "/user/upload-image",
+                            "/user/profile",
+                            "/api/user/profile-image" // <<--- Aquí añadimos el nuevo endpoint
+                        ).authenticated()
                         .anyRequest().permitAll()
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .build();
-    }
+    }        
 
     @Bean
     public AuthenticationProvider authenticationProvider() {

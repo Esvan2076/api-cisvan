@@ -7,17 +7,23 @@ import java.util.Random;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.cisvan.api.common.OperationResult;
+import com.cisvan.api.domain.profileImage.ProfileImage;
+import com.cisvan.api.domain.profileImage.ProfileImageService;
 import com.cisvan.api.domain.users.dto.request.AuthRequest;
 import com.cisvan.api.domain.users.dto.request.LoginRequest;
+import com.cisvan.api.domain.users.dto.request.ProfileUrl;
 import com.cisvan.api.domain.users.dto.request.ResetPasswordRequest;
 import com.cisvan.api.domain.users.dto.request.VerificationCodeRequest;
 import com.cisvan.api.domain.users.dto.response.EmailVerificationResponse;
 import com.cisvan.api.domain.users.dto.response.UserDTO;
+import com.cisvan.api.domain.users.services.UserLogicService;
 import com.cisvan.api.domain.users.services.UserService;
 import com.cisvan.api.domain.users.services.UserValidationService;
 import com.cisvan.api.services.JwtService;
+import com.cisvan.api.services.S3Service;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +34,10 @@ public class UserOrchestrator {
 
     private final UserValidationService userValidationService;
     private final UserService userService;
+    private final ProfileImageService profileImageService;
+    private final UserLogicService userLogicService;
     private final JwtService jwtService;
+    private final S3Service s3Service;
     private final BCryptPasswordEncoder encoder;
     private final Random random = new Random();
     
@@ -80,11 +89,9 @@ public class UserOrchestrator {
     public Optional<String> login(LoginRequest request, OperationResult result) {
         String email = request.getEmail().trim().toLowerCase();
 
-        Optional<Users> userOpt = userService.findByEmail(email);
-        if (userOpt.isEmpty()) {
-            return Optional.empty();
-        }
-
+        Optional<Users> userOpt = userValidationService.validateUserExistsByEmail(email, result);
+        if (userOpt.isEmpty()) return Optional.empty();
+    
         Users user = userOpt.get();
 
         if (!userValidationService.validatePasswordMatches(user, request.getPassword(), result)) {
@@ -101,19 +108,9 @@ public class UserOrchestrator {
     }
 
     public Optional<UserDTO> getMe(HttpServletRequest request) {
-        String authHeader = request.getHeader("Authorization");
-
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return Optional.empty();
-        }
-
-        String token = authHeader.substring(7);
-        Long userId = jwtService.extractUserId(token);
-        String username = jwtService.extractUserName(token);
-        Boolean admin = jwtService.extractAdmin(token);
-
-        return Optional.of(new UserDTO(userId, username, admin));
-    }
+        return userLogicService.getUserFromRequest(request)
+            .map(user -> new UserDTO(user.getId(), user.getUsername(), user.getAdmin()));
+    }    
 
     @Transactional
     public Optional<String> verifyEmail(VerificationCodeRequest request, OperationResult result) {
@@ -154,21 +151,27 @@ public class UserOrchestrator {
     }    
 
     @Transactional
-    public void forgotPassword(String email, OperationResult result) {
-        Optional<Users> userOpt = userService.findByEmail(email);
-        if (userOpt.isEmpty()) return;
-
+    public Optional<EmailVerificationResponse> forgotPassword(String email, OperationResult result) {
+        Optional<Users> userOpt = userValidationService.validateUserExistsByEmail(email, result);
+        if (userOpt.isEmpty()) return Optional.empty();
+    
         Users user = userOpt.get();
-
+    
         if (!userValidationService.validateEmailVerified(user, result)) {
-            return;
+            return Optional.empty(); // Nada de null, Optional.empty() es tu amigo
         }
-
+    
         String code = generate4DigitCode();
         user.setPasswordResetCode(code);
         user.setPasswordResetExpiresAt(LocalDateTime.now().plusMinutes(10));
         userService.create(user);
-    }
+    
+        return Optional.of(new EmailVerificationResponse(
+            user.getUsername(),
+            user.getEmail(),
+            code
+        ));
+    }    
 
     @Transactional
     public boolean resetPassword(ResetPasswordRequest request, OperationResult result) {
@@ -191,5 +194,69 @@ public class UserOrchestrator {
         userService.create(user);
 
         return true;
+    }
+
+    public Optional<String> updateProfileImage(HttpServletRequest request, MultipartFile file, OperationResult result) {
+        // 1. Validar tamaño de imagen
+        if (!userValidationService.validateImageSize(file, result)) {
+            return Optional.empty();
+        }
+
+        // 2. Obtener el usuario autenticado
+        Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
+        if (userOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        Users user = userOpt.get();
+
+        // 3. Subir el archivo a S3
+        Optional<String> uploadedUrlOpt = s3Service.uploadFile(file, result);
+        if (uploadedUrlOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        String imageUrl = uploadedUrlOpt.get();
+
+        // 4. Actualizar URL de la imagen en el usuario
+        user.setProfileImageUrl(imageUrl);
+        userService.create(user);
+
+        // 5. Registrar el histórico en profile_image
+        ProfileImage profileImage = ProfileImage.builder()
+                .userId(user.getId())
+                .imageUrl(imageUrl)
+                .build();
+            profileImageService.create(profileImage);
+
+        // 6. Retornar URL de la nueva imagen
+        return Optional.of(imageUrl);
+    }
+
+    public Optional<ProfileUrl> updateProfileImageFromUrl(HttpServletRequest request, String imageUrl, OperationResult result) {
+        // 1. Obtener el usuario autenticado
+        Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
+        if (userOpt.isEmpty()) {
+            return Optional.empty();
+        }
+        Users user = userOpt.get();
+    
+        // 2. Actualizar URL de la imagen
+        user.setProfileImageUrl(imageUrl);
+        userService.create(user);
+    
+        // 4. Retornar la nueva URL dentro de ProfileUrl
+        return Optional.of(new ProfileUrl(imageUrl));
+    }
+
+    public void deleteProfileImage(HttpServletRequest request, OperationResult result) {
+        // 1. Obtener el usuario autenticado
+        Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
+        if (userOpt.isEmpty()) {
+            return;
+        }
+        Users user = userOpt.get();
+
+        // 2. Borrar la URL de la imagen (poner en null)
+        user.setProfileImageUrl(null);
+        userService.create(user);
     }
 }
