@@ -29,4 +29,7 @@ public class TitleDTO {
     private List<String> genres = new ArrayList<>();
 
     private String posterUrl;
+
+    @Builder.Default
+    private boolean inUserList = false;
 }

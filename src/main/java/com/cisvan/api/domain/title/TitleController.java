@@ -20,6 +20,7 @@ import com.cisvan.api.domain.title.services.TitleLogicService;
 import com.cisvan.api.domain.title.services.TitleService;
 import com.cisvan.api.helper.ControllerHelper;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -43,8 +44,8 @@ public class TitleController {
     }
 
     @GetMapping("/basic/{id}")
-    public ResponseEntity<?> fetchTitleBasicById(@PathVariable("id") String tconst) {
-        return controllerHelper.handleOptional(titleOrchestrator.getTitleBasicById(tconst));
+    public ResponseEntity<?> fetchTitleBasicById(@PathVariable("id") String tconst, HttpServletRequest request) {
+        return controllerHelper.handleOptional(titleOrchestrator.getTitleBasicById(tconst, request));
     }
 
     @GetMapping("/search-movie")
@@ -69,5 +70,25 @@ public class TitleController {
             @RequestParam(defaultValue = "0") int page
     ) {
         return ResponseEntity.ok(titleOrchestrator.searchAdvancedTitles(filters, page));
+    }
+
+    @GetMapping("/user-list")
+    public ResponseEntity<?> fetchListUser(HttpServletRequest request) {
+        return ResponseEntity.ok(titleOrchestrator.getListOfUser(request));
+    }
+
+    @GetMapping("/top-series")
+    public ResponseEntity<?> fetchTopSeries(HttpServletRequest request) {
+        return ResponseEntity.ok(titleOrchestrator.getTop20Series(request));
+    }
+
+    @GetMapping("/top-movies")
+    public ResponseEntity<?> fetchTopNonSeries(HttpServletRequest request) {
+        return ResponseEntity.ok(titleOrchestrator.getTop20NonSeries(request));
+    }
+
+    @GetMapping("/top-trending")
+    public ResponseEntity<?> fetchTopTrending(HttpServletRequest request) {
+        return ResponseEntity.ok(titleOrchestrator.getTop20Trending(request));
     }
 }

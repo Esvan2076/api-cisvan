@@ -1,5 +1,6 @@
 package com.cisvan.api.domain.title.services;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,9 +13,11 @@ import com.cisvan.api.domain.name.Name;
 import com.cisvan.api.domain.name.repos.NameRepository;
 import com.cisvan.api.domain.principal.PrincipalRepository;
 import com.cisvan.api.domain.title.Title;
+import com.cisvan.api.domain.title.dtos.TitleShowDTO;
 import com.cisvan.api.domain.title.dtos.searchDTO.MovieSearchResultDTO;
 import com.cisvan.api.domain.title.dtos.searchDTO.SerieSearchResultDTO;
 import com.cisvan.api.domain.title.repos.TitleRepository;
+import com.cisvan.api.domain.users.Users;
 
 import lombok.RequiredArgsConstructor;
 
@@ -100,5 +103,20 @@ public class TitleLogicService {
         return nameRepository.findAllById(actorIds).stream()
             .map(Name::getPrimaryName)
             .toList();
+    }
+
+    public List<TitleShowDTO> getTitlesForUser(Users user) {
+        List<Object[]> rawResults = titleRepository.findTitlesInUserListWithResolvedPosters(user.getId());
+
+        return rawResults.stream().map(row -> {
+            String tconst = (String) row[4]; // original tconst (para saber cuál marcó el usuario)
+            String primaryTitle = (String) row[1];
+            String posterUrl = (String) row[2];
+            BigDecimal rating = (BigDecimal) row[3];
+
+            TitleShowDTO dto = new TitleShowDTO(tconst, primaryTitle, posterUrl, rating);
+            dto.setInUserList(true); // Siempre en lista
+            return dto;
+        }).toList();
     }
 }

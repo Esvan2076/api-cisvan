@@ -39,15 +39,24 @@ public class SecurityConfig {
                             "/user/me",
                             "/user/upload-image",
                             "/user/profile",
-                            "/api/user/profile-image" // <<--- Aquí añadimos el nuevo endpoint
+                            "/user/profile-image",
+                            "/user/update-image-url",
+                            "/user-list/**"
                         ).authenticated()
+                        .requestMatchers(
+                            "/user/resend-code",
+                            "/user/verify-email",
+                            "/user/forgot-password",
+                            "/user/reset-password"
+                        ).permitAll()
                         .anyRequest().permitAll()
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .build();
-    }        
+    }
+    
 
     @Bean
     public AuthenticationProvider authenticationProvider() {

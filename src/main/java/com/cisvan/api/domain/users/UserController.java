@@ -165,7 +165,6 @@ public class UserController {
         return ResponseEntity.ok(response.get());
     }
 
-
     @DeleteMapping("/profile-image")
     public ResponseEntity<?> deleteProfileImage(HttpServletRequest request) {
         OperationResult operationResult = new OperationResult();

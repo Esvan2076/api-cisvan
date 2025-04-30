@@ -22,7 +22,7 @@ import lombok.Setter;
 public class AuthRequest {
 
     @NotBlank(message = "{NotBlank}")
-    @Size(groups = BasicChecks.class, min = 5, max = 50, message = "{SizeRange}")
+    @Size(groups = BasicChecks.class, min = 3, max = 50, message = "{SizeRange}")
     private String username;
 
     @NotBlank(message = "{NotBlank}")
