@@ -29,6 +29,8 @@ import com.cisvan.api.domain.title.services.TitleLogicService;
 import com.cisvan.api.domain.title.services.TitleService;
 import com.cisvan.api.domain.titlerating.TitleRatingRepository;
 import com.cisvan.api.domain.titlerating.services.TitleRatingService;
+import com.cisvan.api.domain.trending.TrendingRepository;
+import com.cisvan.api.domain.trending.dtos.TrendingScoreDTO;
 import com.cisvan.api.domain.userlist.UserListService;
 import com.cisvan.api.domain.users.Users;
 import com.cisvan.api.domain.users.services.UserLogicService;
@@ -51,6 +53,7 @@ public class TitleOrchestrator {
     private final StreamingLogicService streamingLogicService;
     private final AkasLogicService akasLogicService;
     private final TitleRatingService titleRatingService;
+    private final TrendingRepository trendingRepository;
 
     public Optional<TitleBasicDTO> getTitleBasicById(String tconst, HttpServletRequest request) {
         Optional<Title> titleOpt = titleService.getTitleById(tconst);
@@ -92,8 +95,13 @@ public class TitleOrchestrator {
     
         // Streaming
         detailDTO.setStreamingServices(streamingLogicService.getStreamingServicesByTitle(tconst));
-    
-        // 🔥 Nueva sección: marcar si el título está en la lista del usuario
+
+        // 🔥 Trending Score
+        trendingRepository.findByContentId(tconst).ifPresent(trending -> {
+            TrendingScoreDTO trendingScoreDTO = new TrendingScoreDTO(trending.getScore(), trending.getHistoricalScore());
+            detailDTO.setTrendingScore(trendingScoreDTO);
+        });
+
         List<String> userTconstList = getUserTitleIds(request);
 
         if (userTconstList.isEmpty()) {

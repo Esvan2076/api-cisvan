@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
@@ -22,7 +23,7 @@ import com.cisvan.api.domain.users.dto.request.ResetPasswordRequest;
 import com.cisvan.api.domain.users.dto.request.VerificationCodeRequest;
 import com.cisvan.api.domain.users.dto.response.EmailVerificationResponse;
 import com.cisvan.api.domain.users.dto.response.UserProfileDTO;
-import com.cisvan.api.domain.users.services.UserLogicService;
+import com.cisvan.api.domain.users.dto.response.UserSummaryPrestigeDTO;
 import com.cisvan.api.helper.ControllerHelper;
 
 @RestController
@@ -32,7 +33,6 @@ public class UserController {
 
     private final ControllerHelper controllerHelper;
     private final UserOrchestrator userOrchestrator;
-    private final UserLogicService userLogicService;
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody AuthRequest request, BindingResult result) {
@@ -133,10 +133,22 @@ public class UserController {
     }
 
     @GetMapping("/profile")
-    public Optional<UserProfileDTO> getMyProfile(HttpServletRequest request) {
-        Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
+    public ResponseEntity<?> fetchProfile(HttpServletRequest request) {
+        Optional<UserProfileDTO> profileOpt = userOrchestrator.getProfile(request);
+        
+        return controllerHelper.handleOptional(profileOpt);
+    }
 
-        return userOpt.map(UserProfileDTO::fromEntity);
+    @GetMapping("/followers")
+    public ResponseEntity<?> fetchFollowers(HttpServletRequest request)  {
+        List<UserSummaryPrestigeDTO> followers = userOrchestrator.getFollowers(request);
+        return ResponseEntity.ok(followers);
+    }
+
+    @GetMapping("/following")
+    public ResponseEntity<?> fetchFollowing(HttpServletRequest request)  {
+        List<UserSummaryPrestigeDTO> followers = userOrchestrator.getFollowing(request);
+        return ResponseEntity.ok(followers);
     }
 
     @PostMapping("/upload-image")

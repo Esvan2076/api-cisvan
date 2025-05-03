@@ -17,7 +17,7 @@ public class TrendingService {
         return trendingRepository.findById(trendingId);
     }
 
-    public List<Trending> getTrendingsByTitleId(String tconst) {
+    public Optional<Trending> getTrendingsByTitleId(String tconst) {
         return trendingRepository.findByContentId(tconst);
     }
 

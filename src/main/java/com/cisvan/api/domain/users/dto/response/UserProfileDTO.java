@@ -1,5 +1,7 @@
 package com.cisvan.api.domain.users.dto.response;
 
+import com.cisvan.api.domain.userfollow.dtos.FollowStatsDTO;
+import com.cisvan.api.domain.userprestige.dtos.UserPrestigeDTO;
 import com.cisvan.api.domain.users.Users;
 
 import lombok.AllArgsConstructor;
@@ -17,6 +19,11 @@ public class UserProfileDTO {
     
     private Long id;
     private String username;
+
+    private FollowStatsDTO followStats;
+
+    private UserPrestigeDTO userPrestigeDTO;
+
     @Builder.Default
     private String profileImageUrl = "https://cisvan.s3.us-west-1.amazonaws.com/1.jpg";
 

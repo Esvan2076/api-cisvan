@@ -28,8 +28,6 @@ public class TitleCustomRepositoryImpl implements TitleCustomRepository {
     @Override
     @Transactional(readOnly = true)
     public Page<Title> advancedSearch(TitleAdvancedSearchDTO criteria, Pageable pageable) {
-        System.out.println("=== [BUSQUEDA AVANZADA] ===");
-        System.out.println("Criterios recibidos: " + criteria);
 
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
 
@@ -52,7 +50,6 @@ public class TitleCustomRepositoryImpl implements TitleCustomRepository {
         countQuery.where(cb.and(countPredicates.toArray(new Predicate[0])));
         Long total = entityManager.createQuery(countQuery).getSingleResult();
 
-        System.out.println("Total resultados encontrados: " + total);
         results.forEach(t -> System.out.println("Título: " + t.getPrimaryTitle() + " | TCONST: " + t.getTconst()));
 
         return new PageImpl<>(results, pageable, total);

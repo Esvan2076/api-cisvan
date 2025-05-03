@@ -41,13 +41,15 @@ public class SecurityConfig {
                             "/user/profile",
                             "/user/profile-image",
                             "/user/update-image-url",
+                            "/user/followers",
                             "/user-list/**"
                         ).authenticated()
                         .requestMatchers(
                             "/user/resend-code",
                             "/user/verify-email",
                             "/user/forgot-password",
-                            "/user/reset-password"
+                            "/user/reset-password",
+                            "/user/followers"
                         ).permitAll()
                         .anyRequest().permitAll()
                 )

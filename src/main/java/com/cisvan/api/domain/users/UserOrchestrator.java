@@ -1,6 +1,8 @@
 package com.cisvan.api.domain.users;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 
@@ -12,6 +14,9 @@ import org.springframework.web.multipart.MultipartFile;
 import com.cisvan.api.common.OperationResult;
 import com.cisvan.api.domain.profileImage.ProfileImage;
 import com.cisvan.api.domain.profileImage.ProfileImageService;
+import com.cisvan.api.domain.userfollow.UserFollowService;
+import com.cisvan.api.domain.userfollow.dtos.FollowStatsDTO;
+import com.cisvan.api.domain.userprestige.UserPrestigeService;
 import com.cisvan.api.domain.users.dto.request.AuthRequest;
 import com.cisvan.api.domain.users.dto.request.LoginRequest;
 import com.cisvan.api.domain.users.dto.request.ProfileUrl;
@@ -19,6 +24,9 @@ import com.cisvan.api.domain.users.dto.request.ResetPasswordRequest;
 import com.cisvan.api.domain.users.dto.request.VerificationCodeRequest;
 import com.cisvan.api.domain.users.dto.response.EmailVerificationResponse;
 import com.cisvan.api.domain.users.dto.response.UserDTO;
+import com.cisvan.api.domain.users.dto.response.UserProfileDTO;
+import com.cisvan.api.domain.users.dto.response.UserSummaryPrestigeDTO;
+import com.cisvan.api.domain.users.mapper.UserMapper;
 import com.cisvan.api.domain.users.services.UserLogicService;
 import com.cisvan.api.domain.users.services.UserService;
 import com.cisvan.api.domain.users.services.UserValidationService;
@@ -37,8 +45,11 @@ public class UserOrchestrator {
     private final ProfileImageService profileImageService;
     private final UserLogicService userLogicService;
     private final JwtService jwtService;
+    private final UserMapper userMapper;
     private final S3Service s3Service;
+    private final UserFollowService followService;
     private final BCryptPasswordEncoder encoder;
+    private final UserPrestigeService userPrestigeService;
     private final Random random = new Random();
     
     @Transactional
@@ -80,6 +91,32 @@ public class UserOrchestrator {
                 code
         ));
     }
+
+    public Optional<UserProfileDTO> getProfile(HttpServletRequest request) {
+        Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
+    
+        return userOpt.map(user -> {
+            FollowStatsDTO stats = followService.getFollowStats(user.getId());
+            UserProfileDTO dto = userMapper.toDto(user, stats);
+    
+            userPrestigeService.getPrestigeDTOByUserId(user.getId())
+                .ifPresent(dto::setUserPrestigeDTO);
+    
+            return dto;
+        });
+    }    
+
+    public List<UserSummaryPrestigeDTO> getFollowers(HttpServletRequest request) {
+        return userLogicService.getUserFromRequest(request)
+                .map(user -> followService.getFollowersOfUser(user.getId()))
+                .orElse(Collections.emptyList());
+    }   
+
+    public List<UserSummaryPrestigeDTO> getFollowing(HttpServletRequest request) {
+        return userLogicService.getUserFromRequest(request)
+                .map(user -> followService.getFollowingOfUser(user.getId()))
+                .orElse(Collections.emptyList());
+    }   
 
     public String generate4DigitCode() {
         return String.format("%04d", random.nextInt(10000));
@@ -259,4 +296,9 @@ public class UserOrchestrator {
         user.setProfileImageUrl(null);
         userService.create(user);
     }
+
+    public List<UserSummaryPrestigeDTO> getFollowersSummary(Long userId) {
+        return followService.getFollowersOfUser(userId);
+    }
+
 }
