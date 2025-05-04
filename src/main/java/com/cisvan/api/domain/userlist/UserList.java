@@ -36,6 +36,10 @@ public class UserList {
     @Column(name = "title_id", nullable = false, length = 15)
     private String titleId;
 
+    @Column(name = "seen")
+    @Builder.Default
+    private boolean seen = false;
+
     @Builder.Default
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();

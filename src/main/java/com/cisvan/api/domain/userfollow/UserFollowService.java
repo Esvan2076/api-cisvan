@@ -1,5 +1,6 @@
 package com.cisvan.api.domain.userfollow;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Service;
 import com.cisvan.api.domain.userfollow.dtos.FollowStatsDTO;
 import com.cisvan.api.domain.users.dto.response.UserSummaryPrestigeDTO;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -43,5 +45,25 @@ public class UserFollowService {
                 .trendDirection(row[4] != null ? row[4].toString() : null)
                 .build()
         ).toList();
-    }    
+    }
+
+    public boolean isFollowing(Long followerId, Long followedId) {
+        return userFollowRepository.existsByFollowerIdAndFollowedId(followerId, followedId);
+    }
+
+    @Transactional
+    public void follow(Long followerId, Long followedId) {
+        UserFollow follow = UserFollow.builder()
+                .followerId(followerId)
+                .followedId(followedId)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        userFollowRepository.save(follow);
+    }
+
+    @Transactional
+    public void unfollow(Long followerId, Long followedId) {
+        userFollowRepository.deleteByFollowerIdAndFollowedId(followerId, followedId);
+    }
 }

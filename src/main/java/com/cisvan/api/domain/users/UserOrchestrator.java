@@ -16,6 +16,7 @@ import com.cisvan.api.domain.profileImage.ProfileImage;
 import com.cisvan.api.domain.profileImage.ProfileImageService;
 import com.cisvan.api.domain.userfollow.UserFollowService;
 import com.cisvan.api.domain.userfollow.dtos.FollowStatsDTO;
+import com.cisvan.api.domain.userprestige.UserPrestige;
 import com.cisvan.api.domain.userprestige.UserPrestigeService;
 import com.cisvan.api.domain.users.dto.request.AuthRequest;
 import com.cisvan.api.domain.users.dto.request.LoginRequest;
@@ -26,6 +27,7 @@ import com.cisvan.api.domain.users.dto.response.EmailVerificationResponse;
 import com.cisvan.api.domain.users.dto.response.UserDTO;
 import com.cisvan.api.domain.users.dto.response.UserProfileDTO;
 import com.cisvan.api.domain.users.dto.response.UserSummaryPrestigeDTO;
+import com.cisvan.api.domain.users.dto.response.UserSummaryPrestigeExtendedDTO;
 import com.cisvan.api.domain.users.mapper.UserMapper;
 import com.cisvan.api.domain.users.services.UserLogicService;
 import com.cisvan.api.domain.users.services.UserService;
@@ -301,4 +303,67 @@ public class UserOrchestrator {
         return followService.getFollowersOfUser(userId);
     }
 
+    public boolean toggleFollow(HttpServletRequest request, Long targetUserId) {
+        // 1. Obtener el usuario autenticado
+        Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
+        if (userOpt.isEmpty()) {
+            return false;
+        }
+        Users user = userOpt.get();
+
+        if (user.getId()==targetUserId) {
+            return false;
+        }
+
+        // 3. Consultar si ya lo sigue
+        boolean alreadyFollowing = followService.isFollowing(user.getId(), targetUserId);
+
+        if (alreadyFollowing) {
+            followService.unfollow(user.getId(), targetUserId);
+            return true; // ahora lo dejó de seguir
+        } else {
+            followService.follow(user.getId(), targetUserId);
+            return true; // ahora lo sigue
+        }
+    }
+
+    public Optional<UserSummaryPrestigeExtendedDTO> getMainOfUser(HttpServletRequest request, Long userId) {
+        
+        Optional<Users> targetUserOpt = userService.getById(userId);
+        if (targetUserOpt.isEmpty()) return Optional.empty();
+
+        Users targetUser = targetUserOpt.get();
+
+        // Obtener userId autenticado (si existe)
+        Optional<Users> currentUserOpt = userLogicService.getUserFromRequest(request);
+        Long currentUserId = currentUserOpt.map(Users::getId).orElse(null);
+
+        // Obtener prestigio si existe
+        Optional<UserPrestige> prestigeOpt = userPrestigeService.getPrestigeByUserId(userId);
+
+        // Verificar si el usuario autenticado sigue a este usuario
+        boolean isFollowing = false;
+        boolean isMySelf = false;
+
+        if (currentUserId != null) {
+            isFollowing = followService.isFollowing(currentUserId, userId);
+            isMySelf = currentUserId.equals(userId);
+        }
+
+        UserSummaryPrestigeExtendedDTO dto = UserSummaryPrestigeExtendedDTO.extendedBuilder()
+                .id(targetUser.getId())
+                .username(targetUser.getUsername())
+                .profileImageUrl(
+                        targetUser.getProfileImageUrl() != null
+                                ? targetUser.getProfileImageUrl()
+                                : "https://cisvan.s3.us-west-1.amazonaws.com/1.jpg"
+                )
+                .currentRank(prestigeOpt.map(UserPrestige::getCurrentRank).orElse((short) 0))
+                .trendDirection(prestigeOpt.map(UserPrestige::getTrendDirection).orElse(null))
+                .following(isFollowing)
+                .mySelf(isMySelf)
+                .build();
+
+        return Optional.of(dto);
+    }
 }

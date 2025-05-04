@@ -50,4 +50,10 @@ public interface UserFollowRepository extends JpaRepository<UserFollow, Long> {
     """, nativeQuery = true)
     List<Object[]> findFollowingWithPrestige(@Param("userId") Long userId);
 
+    // Verifica si ya existe la relación
+    boolean existsByFollowerIdAndFollowedId(Long followerId, Long followedId);
+
+    // Elimina una relación de seguimiento
+    int deleteByFollowerIdAndFollowedId(Long followerId, Long followedId);
+
 }

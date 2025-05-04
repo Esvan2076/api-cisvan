@@ -24,6 +24,7 @@ import com.cisvan.api.domain.users.dto.request.VerificationCodeRequest;
 import com.cisvan.api.domain.users.dto.response.EmailVerificationResponse;
 import com.cisvan.api.domain.users.dto.response.UserProfileDTO;
 import com.cisvan.api.domain.users.dto.response.UserSummaryPrestigeDTO;
+import com.cisvan.api.domain.users.dto.response.UserSummaryPrestigeExtendedDTO;
 import com.cisvan.api.helper.ControllerHelper;
 
 @RestController
@@ -137,6 +138,22 @@ public class UserController {
         Optional<UserProfileDTO> profileOpt = userOrchestrator.getProfile(request);
         
         return controllerHelper.handleOptional(profileOpt);
+    }
+
+    @GetMapping("/{userId}/page")
+    public ResponseEntity<?> fetchMainPage(HttpServletRequest request, @PathVariable Long userId)  {
+        Optional<UserSummaryPrestigeExtendedDTO> userOpt = userOrchestrator.getMainOfUser(request, userId);
+        return controllerHelper.handleOptional(userOpt);
+    }
+
+    @PostMapping("/{targetUserId}/toggle-follow")
+    public ResponseEntity<?> changeFollow(HttpServletRequest request, @PathVariable Long targetUserId)  {
+        boolean nowFollowing = userOrchestrator.toggleFollow(request, targetUserId);
+
+        if(!nowFollowing) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/followers")

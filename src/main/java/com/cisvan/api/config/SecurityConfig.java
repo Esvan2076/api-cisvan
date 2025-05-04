@@ -42,7 +42,8 @@ public class SecurityConfig {
                             "/user/profile-image",
                             "/user/update-image-url",
                             "/user/followers",
-                            "/user-list/**"
+                            "/user-list/**",
+                            "/notifications/**"
                         ).authenticated()
                         .requestMatchers(
                             "/user/resend-code",
@@ -59,7 +60,6 @@ public class SecurityConfig {
                 .build();
     }
     
-
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
