@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,4 +22,7 @@ public interface UserListRepository extends JpaRepository<UserList, Long> {
 
     @Query("SELECT u.titleId FROM UserList u WHERE u.userId = :userId")
     List<String> findTitleIdsByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT u FROM UserList u WHERE u.seen = false AND u.createdAt <= :cutoff")
+    List<UserList> findUnwatchedSince(@Param("cutoff") LocalDateTime cutoff);
 }

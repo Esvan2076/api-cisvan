@@ -42,23 +42,13 @@ public class NotificationOrchestrator {
     
                 String refType = notification.getReferenceType();
                 Object refId = notification.getReferenceId();
-                
+
                 if ("USER".equalsIgnoreCase(refType) && refId != null) {
                     try {
-                        System.out.println("🔍 Intentando parsear USER id: " + refId);
                         Long userId = Long.parseLong(refId.toString());
-                        userService.getById(userId).ifPresentOrElse(
-                            u -> {
-                                System.out.println("✅ Usuario encontrado: " + u.getUsername());
-                                referenceName.set(u.getUsername());
-                            },
-                            () -> System.out.println("❌ Usuario no encontrado con id: " + userId)
-                        );
-                    } catch (NumberFormatException e) {
-                        System.out.println("❗ Error al parsear referenceId a Long: " + refId);
-                    }
+                        userService.getById(userId).ifPresent(u -> referenceName.set(u.getUsername()));
+                    } catch (NumberFormatException ignored) {}
                 }
-                
     
                 if ("CONTENT".equalsIgnoreCase(refType) && refId != null) {
                     titleService.getTitleById(refId.toString()).ifPresent(t -> referenceName.set(t.getPrimaryTitle()));

@@ -50,8 +50,6 @@ public class TitleCustomRepositoryImpl implements TitleCustomRepository {
         countQuery.where(cb.and(countPredicates.toArray(new Predicate[0])));
         Long total = entityManager.createQuery(countQuery).getSingleResult();
 
-        results.forEach(t -> System.out.println("Título: " + t.getPrimaryTitle() + " | TCONST: " + t.getTconst()));
-
         return new PageImpl<>(results, pageable, total);
     }
 

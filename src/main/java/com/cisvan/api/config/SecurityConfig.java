@@ -9,16 +9,18 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.cisvan.api.services.MyUserDetailsService;
 
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import java.util.List;
 
-import static org.springframework.security.config.Customizer.withDefaults;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 
 @Configuration
 @EnableWebSecurity
@@ -32,34 +34,49 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
-                .cors(withDefaults())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                            "/user/me",
-                            "/user/upload-image",
-                            "/user/profile",
-                            "/user/profile-image",
-                            "/user/update-image-url",
-                            "/user/followers",
-                            "/user-list/**",
-                            "/notifications/**"
+                                "/user/me",
+                                "/user/upload-image",
+                                "/user/profile",
+                                "/user/profile-image",
+                                "/user/update-image-url",
+                                "/user/followers",
+                                "/user-list/**",
+                                "/notifications/**",
+                                "/comments",
+                                "/comments-like/**"
                         ).authenticated()
+                        .requestMatchers("/comments/admin/**").hasRole("ADMIN")
                         .requestMatchers(
-                            "/user/resend-code",
-                            "/user/verify-email",
-                            "/user/forgot-password",
-                            "/user/reset-password",
-                            "/user/followers"
-                        ).permitAll()
-                        .anyRequest().permitAll()
-                )
+                                "/user/resend-code",
+                                "/user/verify-email",
+                                "/user/forgot-password",
+                                "/user/reset-password",
+                                "/user/followers")
+                        .permitAll()
+                        .anyRequest().permitAll())
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .build();
     }
-    
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
+    }
+
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();

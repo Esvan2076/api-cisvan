@@ -135,5 +135,53 @@ public interface TitleRepository extends JpaRepository<Title, String>, TitleCust
         WHERE ul.user_id = :userId
         ORDER BY ul.created_at DESC
         """, nativeQuery = true)
-    List<Object[]> findTitlesInUserListWithResolvedPosters(@Param("userId") Long userId);    
+    List<Object[]> findTitlesInUserListWithResolvedPosters(@Param("userId") Long userId);
+
+    // Exact genre match (exclude tvEpisode)
+    @Query(value = """
+        SELECT 
+            tb.tconst,
+            tb.title_type,
+            tb.primary_title,
+            tb.start_year,
+            tb.end_year,
+            tr.average_rating,
+            tr.num_votes,
+            tb.poster_url
+        FROM title_basics tb
+        JOIN title_ratings tr ON tb.tconst = tr.tconst
+        WHERE tb.genres @> CAST(:genres AS VARCHAR[])
+          AND tb.title_type != 'tvEpisode'
+          AND tb.tconst != :excludedTconst
+        ORDER BY tr.average_rating DESC
+        LIMIT 10
+    """, nativeQuery = true)
+    List<Object[]> findTop10ByGenresContainingAll(
+        @Param("genres") String genresArrayLiteral,
+        @Param("excludedTconst") String tconst
+    );
+
+    @Query(value = """
+        SELECT 
+            tb.tconst,
+            tb.title_type,
+            tb.primary_title,
+            tb.start_year,
+            tb.end_year,
+            tr.average_rating,
+            tr.num_votes,
+            tb.poster_url
+        FROM title_basics tb
+        JOIN title_ratings tr ON tb.tconst = tr.tconst
+        WHERE tb.genres && CAST(:genres AS VARCHAR[]) 
+        AND tb.title_type != 'tvEpisode'
+        AND tb.tconst NOT IN (:excludedTconsts)
+        ORDER BY tr.average_rating DESC
+        LIMIT :limit
+    """, nativeQuery = true)
+    List<Object[]> findTopByAnyMatchingGenreExcluding(
+        @Param("genres") String genresArrayLiteral,
+        @Param("excludedTconsts") List<String> excludedTconsts,
+        @Param("limit") int limit
+    );
 }

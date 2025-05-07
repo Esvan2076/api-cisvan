@@ -12,16 +12,8 @@ public class NotificationMessageService {
     private final MessageSource messageSource;
 
     public String resolveMessage(String code, String referenceName) {
+        // Si no hay referencia, mandar null o string vacío
         Object[] args = referenceName != null ? new Object[]{referenceName} : new Object[]{""};
-        System.out.println("🛠️ Resolviendo mensaje para código: " + code + " con referencia: " + referenceName);
-        
-        try {
-            String resolved = messageSource.getMessage(code, args, LocaleContextHolder.getLocale());
-            System.out.println("✅ Mensaje resuelto: " + resolved);
-            return resolved;
-        } catch (Exception e) {
-            System.out.println("❌ Error al resolver mensaje para código: " + code + " → " + e.getMessage());
-            return code; // fallback: devuelve el código si falla
-        }
-    }    
+        return messageSource.getMessage(code, args, LocaleContextHolder.getLocale());
+    }
 }
