@@ -12,8 +12,9 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class SeriesSeasonsDTO {
-    
+
     private String seriesTconst;
     private String seriesTitle;
     private Integer totalSeasons;
+    private Integer totalEpisodes;
 }

@@ -24,4 +24,11 @@ public interface EpisodeRepository extends JpaRepository<Episode, String> {
 
     @Query(value = "SELECT COUNT(DISTINCT season_number) FROM title_episode WHERE parent_tconst = :parentTconst", nativeQuery = true)
     Integer countDistinctSeasonsByParentTconst(@Param("parentTconst") String parentTconst);
+
+    @Query("""
+        SELECT COUNT(te) 
+        FROM Episode te 
+        WHERE te.parentTconst = :parentTconst
+    """)
+    Integer countTotalEpisodesByParentTconst(@Param("parentTconst") String parentTconst);
 }

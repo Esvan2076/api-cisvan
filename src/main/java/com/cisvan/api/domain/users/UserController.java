@@ -22,6 +22,7 @@ import com.cisvan.api.domain.users.dto.request.ProfileUrl;
 import com.cisvan.api.domain.users.dto.request.ResetPasswordRequest;
 import com.cisvan.api.domain.users.dto.request.VerificationCodeRequest;
 import com.cisvan.api.domain.users.dto.response.EmailVerificationResponse;
+import com.cisvan.api.domain.users.dto.response.NotificationPromptStatusDTO;
 import com.cisvan.api.domain.users.dto.response.UserProfileDTO;
 import com.cisvan.api.domain.users.dto.response.UserSummaryPrestigeDTO;
 import com.cisvan.api.domain.users.dto.response.UserSummaryPrestigeExtendedDTO;
@@ -155,6 +156,24 @@ public class UserController {
         }
         return ResponseEntity.ok().build();
     }
+    
+    @PostMapping("/activate-notification")
+    public ResponseEntity<?> activateEmailNotification(HttpServletRequest request) {
+        boolean notificationsEnabled = userOrchestrator.activateEmailNotification(request);
+
+        return ResponseEntity.ok().body(
+            Collections.singletonMap("notificationsEnabled", notificationsEnabled)
+        );
+    }
+
+    @PostMapping("/deactivate-notification")
+    public ResponseEntity<?> deactivateEmailNotification(HttpServletRequest request) {
+        boolean notificationsEnabled = userOrchestrator.deactivateEmailNotification(request);
+
+        return ResponseEntity.ok().body(
+            Collections.singletonMap("notificationsEnabled", notificationsEnabled)
+        );
+    }
 
     @GetMapping("/followers")
     public ResponseEntity<?> fetchFollowers(HttpServletRequest request)  {
@@ -202,5 +221,11 @@ public class UserController {
         if (operationResult.hasErrors()) return ResponseEntity.unprocessableEntity().body(operationResult);
 
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/notification-prompt-status")
+    public ResponseEntity<NotificationPromptStatusDTO> getNotificationPromptStatus(HttpServletRequest request) {
+        NotificationPromptStatusDTO status = userOrchestrator.getNotificationPromptStatus(request);
+        return ResponseEntity.ok(status);
     }
 }

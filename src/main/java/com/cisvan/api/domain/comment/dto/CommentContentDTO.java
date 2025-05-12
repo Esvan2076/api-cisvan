@@ -1,11 +1,11 @@
 package com.cisvan.api.domain.comment.dto;
 
-import java.time.LocalDateTime;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 import com.cisvan.api.domain.users.dto.response.UserSummaryPrestigeDTO;
 
@@ -13,15 +13,15 @@ import com.cisvan.api.domain.users.dto.response.UserSummaryPrestigeDTO;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CommentResponseDTO {
+public class CommentContentDTO {
 
     private Long id;
     private String commentText;
     private Integer likeCount;
     private Boolean containsSpoiler;
     private LocalDateTime createdAt;
+    
     private UserSummaryPrestigeDTO user;
-    private boolean likedByMe;
-    private Long replyToUserId;
-    private String replyToUsername;
+    private Boolean likedByMe;
+    private Integer replyCount;
 }

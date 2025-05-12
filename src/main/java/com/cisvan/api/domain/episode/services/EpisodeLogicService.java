@@ -38,15 +38,23 @@ public class EpisodeLogicService {
     public Optional<SeriesSeasonsDTO> getSeriesSeasonSummary(String tconst) {
         Optional<Title> seriesOpt = resolveParentSeries(tconst);
         if (seriesOpt.isEmpty()) return Optional.empty();
-
+    
         Title series = seriesOpt.get();
+    
+        // Obtener el número de temporadas
         Integer seasonCount = episodeRepository.countDistinctSeasonsByParentTconst(series.getTconst());
-
-        SeriesSeasonsDTO dto = new SeriesSeasonsDTO();
-        dto.setSeriesTconst(series.getTconst());
-        dto.setSeriesTitle(series.getPrimaryTitle());
-        dto.setTotalSeasons(seasonCount);
-
+    
+        // Obtener el número total de episodios
+        Integer episodeCount = episodeRepository.countTotalEpisodesByParentTconst(series.getTconst());
+    
+        // Construir el DTO
+        SeriesSeasonsDTO dto = SeriesSeasonsDTO.builder()
+            .seriesTconst(series.getTconst())
+            .seriesTitle(series.getPrimaryTitle())
+            .totalSeasons(seasonCount)
+            .totalEpisodes(episodeCount)
+            .build();
+    
         return Optional.of(dto);
     }
 

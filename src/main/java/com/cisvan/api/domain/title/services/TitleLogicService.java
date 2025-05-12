@@ -11,7 +11,7 @@ import com.cisvan.api.domain.episode.Episode;
 import com.cisvan.api.domain.episode.EpisodeRepository;
 import com.cisvan.api.domain.name.Name;
 import com.cisvan.api.domain.name.repos.NameRepository;
-import com.cisvan.api.domain.principal.PrincipalRepository;
+import com.cisvan.api.domain.principal.repos.PrincipalRepository;
 import com.cisvan.api.domain.title.Title;
 import com.cisvan.api.domain.title.dtos.TitleShowDTO;
 import com.cisvan.api.domain.title.dtos.searchDTO.MovieSearchResultDTO;

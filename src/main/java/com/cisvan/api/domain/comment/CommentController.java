@@ -8,8 +8,10 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import com.cisvan.api.common.OperationResult;
+import com.cisvan.api.domain.comment.dto.CommentContentDTO;
 import com.cisvan.api.domain.comment.dto.CommentResponseDTO;
 import com.cisvan.api.domain.comment.dto.CreateCommentDTO;
+import com.cisvan.api.domain.comment.dto.CreateReplyCommentDTO;
 import com.cisvan.api.helper.ControllerHelper;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,10 +39,28 @@ public class CommentController {
             OperationResult errors = controllerHelper.validate(result);
             return ResponseEntity.badRequest().body(errors);
         }
-        System.out.println("MENSAJE1");
-    
+
         Optional<Comment> optionalComment = commentOrchestrator.createComment(createCommentDTO, request);
 
+        if (optionalComment.isPresent()) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(optionalComment.get());
+        } else {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/reply")
+    public ResponseEntity<?> createReplyComment(
+        @Valid @RequestBody CreateReplyCommentDTO createReplyCommentDTO,
+        HttpServletRequest request,
+        BindingResult result
+    ) {
+        if (result.hasErrors()) {
+            OperationResult errors = controllerHelper.validate(result);
+            return ResponseEntity.badRequest().body(errors);
+        }
+
+        Optional<Comment> optionalComment = commentOrchestrator.createReplyComment(createReplyCommentDTO, request);
 
         if (optionalComment.isPresent()) {
             return ResponseEntity.status(HttpStatus.CREATED).body(optionalComment.get());
@@ -54,7 +74,7 @@ public class CommentController {
         @PathVariable String tconst,
         HttpServletRequest request
         ) {
-        List<CommentResponseDTO> comments = commentOrchestrator.getCommentsForTitle(tconst, request);
+        List<CommentContentDTO> comments = commentOrchestrator.getCommentsForTitle(tconst, request);
         return ResponseEntity.ok(comments);
     }
 
@@ -63,9 +83,13 @@ public class CommentController {
         return ResponseEntity.ok(commentService.getReviewsForTitle(tconst));
     }
 
-    @GetMapping("/reply/{parentId}")
-    public ResponseEntity<List<Comment>> getReplies(@PathVariable Long parentId) {
-        return ResponseEntity.ok(commentService.getReplies(parentId));
+    @GetMapping("/replies/{parentCommentId}")
+    public ResponseEntity<?> getRepliesForComment(
+            @PathVariable Long parentCommentId,
+            HttpServletRequest request
+    ) {
+        List<CommentResponseDTO> replies = commentOrchestrator.getRepliesForComment(parentCommentId, request);
+        return ResponseEntity.ok(replies);
     }
 
     @DeleteMapping("/comments/{commentId}")

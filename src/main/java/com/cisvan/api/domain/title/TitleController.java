@@ -1,8 +1,10 @@
 package com.cisvan.api.domain.title;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,10 +15,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.cisvan.api.domain.title.dtos.TitleKnownForDTO;
+import com.cisvan.api.domain.title.dtos.TitleReviewDTO;
 import com.cisvan.api.domain.title.dtos.searchDTO.MovieSearchResultDTO;
 import com.cisvan.api.domain.title.dtos.searchDTO.SerieSearchResultDTO;
 import com.cisvan.api.domain.title.dtos.searchDTO.TitleAdvancedSearchDTO;
 import com.cisvan.api.domain.title.services.TitleLogicService;
+import com.cisvan.api.domain.title.services.TitleReviewService;
 import com.cisvan.api.domain.title.services.TitleService;
 import com.cisvan.api.helper.ControllerHelper;
 
@@ -32,6 +36,7 @@ public class TitleController {
     private final TitleLogicService titleLogicService;
     private final TitleOrchestrator titleOrchestrator;
     private final ControllerHelper controllerHelper;
+    private final TitleReviewService titleReviewService;
 
     @GetMapping("/{id}")
     public ResponseEntity<?> fetchTitleById(@PathVariable("id") String tconst) {
@@ -90,5 +95,16 @@ public class TitleController {
     @GetMapping("/top-trending")
     public ResponseEntity<?> fetchTopTrending(HttpServletRequest request) {
         return ResponseEntity.ok(titleOrchestrator.getTop20Trending(request));
+    }
+
+    @GetMapping("/{tconst}/review-data")
+    public ResponseEntity<?> getTitleReviewData(@PathVariable String tconst) {
+        Optional<TitleReviewDTO> reviewData = titleReviewService.getTitleReview(tconst);
+
+        if (reviewData.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Title not found");
+        }
+
+        return ResponseEntity.ok(reviewData.get());
     }
 }

@@ -16,6 +16,7 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+
 @Entity
 @Table(name = "users")
 @Getter
@@ -58,4 +59,12 @@ public class Users {
 
     @Column(name = "profile_image_url", length = 300)
     private String profileImageUrl;
+
+    @Builder.Default
+    @Column(name = "email_notifications", nullable = false)
+    private Boolean emailNotifications = true;
+    
+    @Builder.Default
+    @Column(name = "has_answered_notification_prompt", nullable = false)
+    private Boolean hasAnsweredNotificationPrompt = false;  
 }

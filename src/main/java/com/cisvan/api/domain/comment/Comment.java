@@ -27,12 +27,19 @@ public class Comment {
     @Column(name = "parent_comment_id")
     private Long parentCommentId;
 
+    @Column(name = "reply_to_user_id")
+    private Long replyToUserId;
+
     @Column(name = "comment_text", nullable = false, columnDefinition = "TEXT")
     private String commentText;
 
     @Builder.Default
     @Column(name = "like_count", nullable = false)
     private Integer likeCount = 0;
+
+    @Builder.Default
+    @Column(name = "last_notified_likes", nullable = false)
+    private Integer lastNotifiedLikes = 0;
 
     @Builder.Default
     @Column(name = "is_review", nullable = false)

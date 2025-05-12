@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.cisvan.api.domain.title.Title;
+import com.cisvan.api.domain.title.dtos.TitleKnownForDTO;
 import com.cisvan.api.domain.title.dtos.TitleShowDTO;
 import com.cisvan.api.domain.title.dtos.searchDTO.TitleAdvancedSearchDTO;
 import com.cisvan.api.domain.title.repos.TitleRepository;
@@ -36,7 +37,7 @@ public class TitleService {
         return titleRepository.findByPrimaryTitleContainingIgnoreCase(name);
     }
 
-    public Page<Title> advancedSearch(TitleAdvancedSearchDTO criteria, Pageable pageable) {
+    public Page<TitleKnownForDTO> advancedSearch(TitleAdvancedSearchDTO criteria, Pageable pageable) {
         return titleRepository.advancedSearch(criteria, pageable);
     }
 

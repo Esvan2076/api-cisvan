@@ -1,7 +1,8 @@
 package com.cisvan.api.domain.commentLike;
 
+import java.util.Collections;
+
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,21 +18,12 @@ public class CommentLikeController {
 
     private final CommentLikeOrchestrator commentLikeOrchestrator;
 
-    @PostMapping("/{commentId}/like")
-    public ResponseEntity<?> likeComment(
+    @PostMapping("/{commentId}/like-toggle")
+    public ResponseEntity<?> toggleLikeComment(
         @PathVariable Long commentId,
         HttpServletRequest request
     ) {
-        commentLikeOrchestrator.likeComment(commentId, request);
-        return ResponseEntity.ok().build();
-    }
-
-    @DeleteMapping("/{commentId}/like")
-    public ResponseEntity<?> unlikeComment(
-        @PathVariable Long commentId,
-        HttpServletRequest request
-    ) {
-        commentLikeOrchestrator.unlikeComment(commentId, request);
-        return ResponseEntity.ok().build();
-    }
+        boolean isLiked = commentLikeOrchestrator.toggleLikeComment(commentId, request);
+        return ResponseEntity.ok(Collections.singletonMap("liked", isLiked));
+    }    
 }

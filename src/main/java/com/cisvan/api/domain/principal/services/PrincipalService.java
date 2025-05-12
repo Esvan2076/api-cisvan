@@ -8,8 +8,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.cisvan.api.domain.name.repos.NameRepository;
 import com.cisvan.api.domain.principal.Principal;
-import com.cisvan.api.domain.principal.PrincipalRepository;
 import com.cisvan.api.domain.principal.dtos.CastMemberDTO;
+import com.cisvan.api.domain.principal.repos.PrincipalRepository;
 
 import lombok.RequiredArgsConstructor;
 

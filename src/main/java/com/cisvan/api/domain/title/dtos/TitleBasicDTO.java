@@ -15,7 +15,7 @@ import lombok.EqualsAndHashCode;
 public class TitleBasicDTO extends TitleDTO {
 
     private TitleRating titleRatings;
-    private List<NameEssencialDTO> directos;
+    private List<NameEssencialDTO> directors;
     private List<NameEssencialDTO> writers;
     private List<Streaming> streamingServices;
 

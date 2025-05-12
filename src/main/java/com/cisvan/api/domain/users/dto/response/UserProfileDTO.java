@@ -16,16 +16,17 @@ import lombok.Setter;
 @NoArgsConstructor
 @Builder
 public class UserProfileDTO {
-    
+
     private Long id;
     private String username;
-
     private FollowStatsDTO followStats;
-
     private UserPrestigeDTO userPrestigeDTO;
 
     @Builder.Default
     private String profileImageUrl = "https://cisvan.s3.us-west-1.amazonaws.com/1.jpg";
+
+    @Builder.Default
+    private Boolean emailNotifications = false;  // Nuevo campo añadido
 
     public static UserProfileDTO fromEntity(Users user) {
         return UserProfileDTO.builder()
@@ -34,6 +35,7 @@ public class UserProfileDTO {
                 .profileImageUrl(user.getProfileImageUrl() != null 
                     ? user.getProfileImageUrl() 
                     : "https://cisvan.s3.us-west-1.amazonaws.com/1.jpg")
+                .emailNotifications(user.getEmailNotifications())  // Asignación del nuevo campo
                 .build();
     }
 }

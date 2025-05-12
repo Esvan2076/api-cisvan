@@ -24,6 +24,7 @@ import com.cisvan.api.domain.users.dto.request.ProfileUrl;
 import com.cisvan.api.domain.users.dto.request.ResetPasswordRequest;
 import com.cisvan.api.domain.users.dto.request.VerificationCodeRequest;
 import com.cisvan.api.domain.users.dto.response.EmailVerificationResponse;
+import com.cisvan.api.domain.users.dto.response.NotificationPromptStatusDTO;
 import com.cisvan.api.domain.users.dto.response.UserDTO;
 import com.cisvan.api.domain.users.dto.response.UserProfileDTO;
 import com.cisvan.api.domain.users.dto.response.UserSummaryPrestigeDTO;
@@ -96,17 +97,20 @@ public class UserOrchestrator {
 
     public Optional<UserProfileDTO> getProfile(HttpServletRequest request) {
         Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
-    
+
         return userOpt.map(user -> {
             FollowStatsDTO stats = followService.getFollowStats(user.getId());
             UserProfileDTO dto = userMapper.toDto(user, stats);
-    
+
+            // Obtener la preferencia de notificación por correo
+            dto.setEmailNotifications(user.getEmailNotifications());
+
             userPrestigeService.getPrestigeDTOByUserId(user.getId())
                 .ifPresent(dto::setUserPrestigeDTO);
-    
+
             return dto;
         });
-    }    
+    }
 
     public List<UserSummaryPrestigeDTO> getFollowers(HttpServletRequest request) {
         return userLogicService.getUserFromRequest(request)
@@ -325,6 +329,50 @@ public class UserOrchestrator {
             followService.follow(user.getId(), targetUserId);
             return true; // ahora lo sigue
         }
+    }
+    
+
+    public boolean activateEmailNotification(HttpServletRequest request) {
+        // Obtener el usuario autenticado desde el token
+        Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
+        if (userOpt.isEmpty()) {
+            return false;
+        }
+
+        Users user = userOpt.get();
+        user.setEmailNotifications(true);
+        user.setHasAnsweredNotificationPrompt(true);
+        userService.create(user);
+        return true;
+    }
+
+    public boolean deactivateEmailNotification(HttpServletRequest request) {
+        // Obtener el usuario autenticado desde el token
+        Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
+        if (userOpt.isEmpty()) {
+            return false;
+        }
+
+        Users user = userOpt.get();
+        user.setEmailNotifications(false);
+        user.setHasAnsweredNotificationPrompt(true);
+        userService.create(user);
+        return false;
+    }
+
+    public NotificationPromptStatusDTO getNotificationPromptStatus(HttpServletRequest request) {
+        // Obtener el usuario autenticado desde el token
+        Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
+        if (userOpt.isEmpty()) {
+            return NotificationPromptStatusDTO.builder()
+                    .hasAnsweredNotificationPrompt(false)
+                    .build();
+        }
+
+        Users user = userOpt.get();
+        return NotificationPromptStatusDTO.builder()
+                .hasAnsweredNotificationPrompt(user.getHasAnsweredNotificationPrompt())
+                .build();
     }
 
     public Optional<UserSummaryPrestigeExtendedDTO> getMainOfUser(HttpServletRequest request, Long userId) {

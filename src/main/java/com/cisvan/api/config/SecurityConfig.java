@@ -47,7 +47,12 @@ public class SecurityConfig {
                                 "/user-list/**",
                                 "/notifications/**",
                                 "/comments",
-                                "/comments-like/**"
+                                "/comments-like/**",
+                                "/comments",                 
+                                "/comments/reply",            
+                                "/user/activate-notification",
+                                "/user/deactivate-notification",
+                                "/user/notification-prompt-status"
                         ).authenticated()
                         .requestMatchers("/comments/admin/**").hasRole("ADMIN")
                         .requestMatchers(

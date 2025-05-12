@@ -10,7 +10,6 @@ import java.util.Set;
 
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -28,7 +27,6 @@ import com.cisvan.api.domain.title.mappers.TitleMapper;
 import com.cisvan.api.domain.title.services.TitleLogicService;
 import com.cisvan.api.domain.title.services.TitleService;
 import com.cisvan.api.domain.titlerating.TitleRatingRepository;
-import com.cisvan.api.domain.titlerating.services.TitleRatingService;
 import com.cisvan.api.domain.trending.TrendingRepository;
 import com.cisvan.api.domain.trending.dtos.TrendingScoreDTO;
 import com.cisvan.api.domain.userlist.UserListService;
@@ -52,7 +50,6 @@ public class TitleOrchestrator {
     private final UserLogicService userLogicService;
     private final StreamingLogicService streamingLogicService;
     private final AkasLogicService akasLogicService;
-    private final TitleRatingService titleRatingService;
     private final TrendingRepository trendingRepository;
 
     public Optional<TitleBasicDTO> getTitleBasicById(String tconst, HttpServletRequest request) {
@@ -80,7 +77,7 @@ public class TitleOrchestrator {
                 writers.stream().limit(3).toList()
             );
     
-            detailDTO.setDirectos(directos);
+            detailDTO.setDirectors(directos);
             detailDTO.setWriters(writersList);
         });
     
@@ -132,20 +129,8 @@ public class TitleOrchestrator {
 
     public Page<TitleKnownForDTO> searchAdvancedTitles(TitleAdvancedSearchDTO criteria, int page) {
         Pageable pageable = PageRequest.of(page, 20); // Tamaño fijo de 20 como se solicitó
-        Page<Title> titlePage = titleService.advancedSearch(criteria, pageable);
-
-        List<TitleKnownForDTO> content = titlePage.getContent().stream().map(title -> {
-            TitleKnownForDTO dto = titleMapper.toKnownForDTO(title);
-
-            // Obtener el rating de forma separada
-            titleRatingService.getTitleRatingById(title.getTconst())
-                    .ifPresent(dto::setTitleRatings);
-
-            return dto;
-        }).toList();
-
-        return new PageImpl<>(content, pageable, titlePage.getTotalElements());
-    }
+        return titleService.advancedSearch(criteria, pageable);
+    }    
 
     public List<TitleShowDTO> getListOfUser(HttpServletRequest request) {
         Optional<Users> userOpt = userLogicService.getUserFromRequest(request);

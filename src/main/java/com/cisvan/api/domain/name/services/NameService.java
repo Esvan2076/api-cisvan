@@ -9,6 +9,8 @@ import com.cisvan.api.domain.name.Name;
 import com.cisvan.api.domain.name.dto.NameAdvancedSearchDTO;
 
 import com.cisvan.api.domain.name.repos.NameRepository;
+import com.cisvan.api.domain.principal.repos.PrincipalCustomRepository;
+import com.cisvan.api.domain.title.dtos.TitleKnownForDTO;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,6 +22,7 @@ import java.util.Optional;
 public class NameService {
 
     private final NameRepository nameRepository;
+    private final PrincipalCustomRepository principalRepository;
 
     public Optional<Name> findById(String nconst) {
         return nameRepository.findById(nconst);
@@ -32,5 +35,9 @@ public class NameService {
     @Transactional(readOnly = true)
     public Page<Name> advancedSearch(NameAdvancedSearchDTO criteria, Pageable pageable) {
         return nameRepository.advancedSearch(criteria, pageable);
+    }
+
+    public Page<TitleKnownForDTO> getWorksByPerson(String nconst, Pageable pageable) {
+        return principalRepository.findWorksByPerson(nconst, pageable);
     }
 }
