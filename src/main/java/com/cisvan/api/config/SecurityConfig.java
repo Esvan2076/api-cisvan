@@ -48,11 +48,12 @@ public class SecurityConfig {
                                 "/notifications/**",
                                 "/comments",
                                 "/comments-like/**",
-                                "/comments",                 
-                                "/comments/reply",            
+                                "/comments",
+                                "/comments/reply",
                                 "/user/activate-notification",
                                 "/user/deactivate-notification",
-                                "/user/notification-prompt-status"
+                                "/user/notification-prompt-status",
+                                "/reviews/submit"
                         ).authenticated()
                         .requestMatchers("/comments/admin/**").hasRole("ADMIN")
                         .requestMatchers(
@@ -67,7 +68,7 @@ public class SecurityConfig {
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .build();
-    }
+    }    
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

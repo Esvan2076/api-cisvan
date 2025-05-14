@@ -1,6 +1,7 @@
 package com.cisvan.api.domain.title.repos;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -184,4 +185,7 @@ public interface TitleRepository extends JpaRepository<Title, String>, TitleCust
         @Param("excludedTconsts") List<String> excludedTconsts,
         @Param("limit") int limit
     );
+
+    @Query("SELECT t.primaryTitle FROM Title t WHERE t.tconst = :tconst")
+    Optional<String> findPrimaryTitleByTconst(@Param("tconst") String tconst);
 }

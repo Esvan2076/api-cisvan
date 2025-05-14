@@ -1,5 +1,7 @@
 package com.cisvan.api.domain.comment;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -45,4 +47,9 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
         LIMIT 1;
     """, nativeQuery = true)
     Optional<String> findRootTconst(@Param("commentId") Long commentId);
+
+    Optional<Comment> findByUserIdAndTconstAndIsReviewTrue(Long userId, String tconst);
+
+    // Método para obtener los comentarios de un contenido específico ordenados por likeCount
+    Page<Comment> findByTconstAndIsReviewTrueOrderByLikeCountDesc(String tconst, Pageable pageable);
 }
