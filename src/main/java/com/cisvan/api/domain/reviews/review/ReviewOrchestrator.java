@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
+import com.cisvan.api.domain.recommendation.RecommendationService;
 import com.cisvan.api.domain.reviews.dtos.ReviewResponseDTO;
 import com.cisvan.api.domain.reviews.dtos.TitleReviewDTO;
 import com.cisvan.api.domain.users.Users;
@@ -19,6 +20,7 @@ public class ReviewOrchestrator {
 
     private final ReviewService reviewService;
     private final UserLogicService userLogicService;
+    private final RecommendationService recommendationService;
 
     public Long createReview(TitleReviewDTO reviewDTO, HttpServletRequest request) {
         // Obtener el usuario autenticado desde el token
@@ -28,7 +30,13 @@ public class ReviewOrchestrator {
         }
 
         Users user = userOpt.get();
-        return reviewService.createFullReview(reviewDTO, user.getId());
+        // Crear la reseña
+        Long reviewId = reviewService.createFullReview(reviewDTO, user.getId());
+
+        // Ejecutar el algoritmo de recomendación en segundo plano
+        recommendationService.triggerRecommendationAlgorithm(reviewDTO, user.getId());
+
+        return reviewId;
     }
 
     public Page<ReviewResponseDTO> getPaginatedReviews(int page, String tconst, HttpServletRequest request) {

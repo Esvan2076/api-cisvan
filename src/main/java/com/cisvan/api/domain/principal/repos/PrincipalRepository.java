@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import com.cisvan.api.domain.name.dto.NameEssencialDTO;
 import com.cisvan.api.domain.principal.Principal;
 import com.cisvan.api.domain.principal.PrincipalId;
+import com.cisvan.api.domain.reviews.dtos.TitleOrderingDTO;
 
 @Repository
 public interface PrincipalRepository extends JpaRepository<Principal, PrincipalId> {
@@ -44,4 +45,20 @@ public interface PrincipalRepository extends JpaRepository<Principal, PrincipalI
         LIMIT 3
     """, nativeQuery = true)
     List<Object[]> findDirectorsByTconst(@Param("tconst") String tconst);
+
+    @Query("SELECT p FROM Principal p WHERE p.id.tconst = :tconst AND (p.category = 'actor' OR p.category = 'actress')")
+    List<Principal> findActorsByTconst(@Param("tconst") String tconst);
+
+    @Query("SELECT p.nconst FROM Principal p WHERE p.id.tconst = :tconst " +
+        "AND p.category = 'actor' OR p.category = 'actress' ORDER BY p.id.ordering ASC")
+    List<String> findActorsByTconstRecomendation(@Param("tconst") String tconst);
+    
+    @Query("SELECT new com.cisvan.api.domain.reviews.dtos.TitleOrderingDTO(p.id.tconst, p.id.ordering) " + 
+        "FROM Principal p JOIN Title t ON p.id.tconst = t.tconst " +
+        "WHERE p.nconst = :nconst " +
+        "AND (p.category = 'actor' OR p.category = 'actress') " +
+        "AND t.titleType != 'tvEpisode'")
+    List<TitleOrderingDTO> findTitlesAndOrderingByNconst(@Param("nconst") String nconst);
+    
+    boolean existsById_TconstAndNconst(String tconst, String nconst);
 }

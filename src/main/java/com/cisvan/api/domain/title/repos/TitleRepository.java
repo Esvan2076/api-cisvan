@@ -188,4 +188,24 @@ public interface TitleRepository extends JpaRepository<Title, String>, TitleCust
 
     @Query("SELECT t.primaryTitle FROM Title t WHERE t.tconst = :tconst")
     Optional<String> findPrimaryTitleByTconst(@Param("tconst") String tconst);
+
+
+    // REVISAR
+    @Query(
+        value = "SELECT t.tconst FROM title_basics t WHERE " +
+                "t.genres @> ARRAY[:genres]::varchar[] AND " + // Cambiado aquí
+                "t.tconst NOT IN (:excludedTitles) AND " +
+                "t.title_type != 'tvEpisode'",
+        nativeQuery = true
+    )
+    List<String> findTitlesWithAllGenres(
+        @Param("genres") List<String> genres,
+        @Param("excludedTitles") List<String> excludedTitles
+    );
+
+    @Query(value = "SELECT t.tconst FROM title_basics t " +
+                   "WHERE :genre = ANY(t.genres) " +
+                   "AND t.tconst NOT IN (:excludedTitles) " +
+                   "AND t.title_type != 'tvEpisode'", nativeQuery = true)
+    List<String> findTitlesByGenre(@Param("genre") String genre, @Param("excludedTitles") List<String> excludedTitles);
 }

@@ -52,4 +52,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     // Método para obtener los comentarios de un contenido específico ordenados por likeCount
     Page<Comment> findByTconstAndIsReviewTrueOrderByLikeCountDesc(String tconst, Pageable pageable);
+
+    @Query("SELECT c.tconst FROM Comment c WHERE c.userId = :userId AND c.tconst IS NOT NULL")
+    List<String> findTconstsByUserId(@Param("userId") Long userId);
 }
