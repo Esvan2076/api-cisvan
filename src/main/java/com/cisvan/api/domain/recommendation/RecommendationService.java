@@ -1,6 +1,7 @@
 package com.cisvan.api.domain.recommendation;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -22,6 +23,11 @@ import com.cisvan.api.domain.crew.Crew;
 import com.cisvan.api.domain.crew.CrewRepository;
 import com.cisvan.api.domain.principal.Principal;
 import com.cisvan.api.domain.principal.repos.PrincipalRepository;
+import com.cisvan.api.domain.recommendation.userrecomendationitem.UserRecommendationItem;
+import com.cisvan.api.domain.recommendation.userrecommendationset.UserRecommendationSet;
+import com.cisvan.api.domain.recommendation.userrecommendationset.UserRecommendationSetRepository;
+import com.cisvan.api.domain.recommendation.usersecondary.UserSecondaryRecommendation;
+import com.cisvan.api.domain.recommendation.usersecondary.UserSecondaryRecommendationRepository;
 import com.cisvan.api.domain.reviews.dtos.TitleRecommendationDTO;
 import com.cisvan.api.domain.reviews.dtos.TitleOrderingDTO;
 import com.cisvan.api.domain.reviews.dtos.TitleReviewDTO;
@@ -47,6 +53,8 @@ public class RecommendationService {
     private final CommentRepository commentRepository;
     private final PrincipalRepository principalRepository;
     private final TitleRatingRepository titleRatingRepository;
+    private final UserRecommendationSetRepository userRecommendationSetRepository;
+    private final UserSecondaryRecommendationRepository userSecondaryRecommendationRepository;
 
     final BigDecimal actorMultiplier = BigDecimal.valueOf(9.9);
 
@@ -54,7 +62,11 @@ public class RecommendationService {
     private static final int RECOMMENDATION_LIMIT = 30;
 
     // Dentro de tu clase de servicio, define esta constante o un campo:
-    private static final BigDecimal DEFAULT_ACTOR_MULTIPLIER_LOW_SCORE = new BigDecimal("4.0"); // ¡AJUSTA ESTE VALOR!
+    private static final BigDecimal DEFAULT_ACTOR_MULTIPLIER_LOW_SCORE = new BigDecimal("4.0");
+
+    private enum RecommendationCategory {
+        DIRECTOR, ACTOR, GENRE
+    }
 
     public List<RecommendedTitleDTO> getGenreBasedRecommendations(String tconst) {
         Optional<Title> titleOpt = titleService.getTitleById(tconst);
@@ -68,7 +80,7 @@ public class RecommendationService {
         List<Object[]> exactRows = titleRepository.findTop10ByGenresContainingAll(genresArrayLiteral, tconst);
 
         Set<String> seenTconsts = new HashSet<>();
-        List<RecommendedTitleDTO> results = mapToDtoList(exactRows, seenTconsts);
+        List<RecommendedTitleDTO> results = new ArrayList<>(mapToDtoList(exactRows, seenTconsts));
 
         // 2. Partial genre match (if needed)
         int remaining = 10 - results.size();
@@ -119,15 +131,120 @@ public class RecommendationService {
     @Async
     public void triggerRecommendationAlgorithm(TitleReviewDTO reviewDTO, Long userId) {
         try {
-            // Llamar al método de generación de recomendaciones de manera síncrona
-            List<TitleRecommendationDTO> recommendations = generateRecommendations(reviewDTO, userId);
+            // 1. Generar recomendaciones primarias (tu lógica existente)
+            // 1. Generar recomendaciones primarias (tu lógica existente)
+            List<TitleRecommendationDTO> primaryRecommendations = generateRecommendations(reviewDTO, userId);
 
-            // Imprimir los resultados para depuración
-            recommendations.forEach(rec -> {
+            if (primaryRecommendations == null || primaryRecommendations.isEmpty()) {
+                System.out.println("No se generaron recomendaciones primarias para el usuario: " + userId
+                        + " basadas en la reseña de " + reviewDTO.getTconst());
+                return;
+            }
+
+            // Imprimir las recomendaciones PRIMARIAS generadas
+            System.out.println("Recomendaciones PRIMARIAS generadas para usuario " + userId + " (reseña de "
+                    + reviewDTO.getTconst() + "):");
+            primaryRecommendations.forEach(rec -> {
+                // Aquí completamos el System.out.println
                 System.out.println(
-                        "Recomendación: " + rec.getTitle() + " - Score: " + rec.getMatchCount() + rec.getMatchScore());
+                        "  Título: " + rec.getTitle() +
+                        " (tconst: " + rec.getTconst() +
+                        ", rating Película: " + rec.getRating() + // Calificación del título recomendado
+                        ") - MatchCount: " + rec.getMatchCount() +
+                        ", MatchScore: " + rec.getMatchScore());
             });
 
+            // 2. Crear y guardar el NUEVO conjunto de recomendaciones primarias
+            UserRecommendationSet newPrimarySet = UserRecommendationSet.builder()
+                    .userId(userId)
+                    .generatedAt(LocalDateTime.now())
+                    .build();
+            short currentRank = 1;
+            for (TitleRecommendationDTO dto : primaryRecommendations) {
+                UserRecommendationItem item = UserRecommendationItem.builder()
+                        .tconst(dto.getTconst())
+                        .rank(currentRank++)
+                        .matchCount(dto.getMatchCount())
+                        .matchScore(dto.getMatchScore())
+                        .titleRatingAtRecommendation(dto.getRating())
+                        .build();
+                newPrimarySet.addItem(item);
+            }
+            userRecommendationSetRepository.save(newPrimarySet);
+            System.out.println("Recomendaciones primarias guardadas para usuario: " + userId + ", Set Primario ID: "
+                    + newPrimarySet.getId());
+
+            // 3. Contar el número TOTAL de UserRecommendationSet para este usuario
+            // (incluyendo el actual)
+            long totalPrimarySetsForUser = userRecommendationSetRepository.countByUserId(userId);
+
+            if (totalPrimarySetsForUser == 1) {
+                // RQNF 79: Única reseña/set primario. Copiar las primarias (hasta p_top_n) a
+                // secundarias.
+                System.out.println(
+                        "Usuario " + userId + " tiene solo un set primario. Copiando primarias a secundarias.");
+                List<UserSecondaryRecommendation> secondaryRecsToSave = new ArrayList<>();
+                short secondaryRank = 1;
+                LocalDateTime now = LocalDateTime.now();
+
+                // Usamos la lista 'primaryRecommendations' (DTOs) que ya tenemos y está
+                // ordenada
+                for (TitleRecommendationDTO dto : primaryRecommendations) {
+                    if (secondaryRank > 30) { // Limitar a 30 (o el p_top_n que uses)
+                        break;
+                    }
+                    UserSecondaryRecommendation secRec = UserSecondaryRecommendation.builder()
+                            .userId(userId)
+                            .tconst(dto.getTconst())
+                            .rankForUser(secondaryRank++)
+                            .crossMatchCountForUser(1) // Solo este set está involucrado
+                            .aggregatedMatchScoreForUser(dto.getMatchScore()) // Score del único set primario
+                            .lastCalculatedAt(now)
+                            .build();
+                    secondaryRecsToSave.add(secRec);
+                }
+                if (!secondaryRecsToSave.isEmpty()) {
+                    userSecondaryRecommendationRepository.saveAll(secondaryRecsToSave);
+                }
+                System.out.println(secondaryRecsToSave.size()
+                        + " recomendaciones secundarias guardadas (directas desde primarias) para usuario: " + userId);
+
+            } else if (totalPrimarySetsForUser > 1) {
+                // Múltiples sets primarios. Ejecutar el algoritmo de agregación en la BD.
+                System.out.println("Usuario " + userId + " tiene " + totalPrimarySetsForUser
+                        + " sets primarios. Ejecutando agregación en BD para secundarias.");
+                userSecondaryRecommendationRepository.executeUpdateUserSecondaryRecommendations(userId, 30);
+                System.out.println(
+                        "Recomendaciones secundarias actualizadas vía agregación en BD para usuario: " + userId);
+            } else {
+
+                System.out.println("Advertencia: totalPrimarySetsForUser es " + totalPrimarySetsForUser +
+                        " para el usuario " + userId + ". No se actualizan secundarias por este camino.");
+            }
+
+            // 5. Opcional pero recomendado: Imprimir las recomendaciones secundarias
+            // generadas/actualizadas
+            List<UserSecondaryRecommendation> finalSecondaryRecommendations = userSecondaryRecommendationRepository
+                    .findByUserIdOrderByRankForUserAsc(userId);
+
+            if (finalSecondaryRecommendations.isEmpty()) {
+                System.out.println("No se encontraron recomendaciones secundarias finales para el usuario: " + userId);
+            } else {
+                System.out.println("Recomendaciones SECUNDARIAS FINALES para el usuario " + userId + ":");
+                finalSecondaryRecommendations.forEach(secRec -> {
+                    // Para obtener el nombre del título, necesitarías el TitleRepository
+                    // String titleName = titleRepository.findById(secRec.getTconst())
+                    // .map(Title::getPrimaryTitle)
+                    // .orElse("Título Desconocido");
+                    System.out.println(
+                            "  Rank: " + secRec.getRankForUser() +
+                    // ", Nombre: " + titleName + // Descomenta si implementas la búsqueda del
+                    // nombre
+                                    " (tconst: " + secRec.getTconst() + ")" +
+                                    ", CrossMatchCount: " + secRec.getCrossMatchCountForUser() +
+                                    ", AggregatedScore: " + secRec.getAggregatedMatchScoreForUser());
+                });
+            }
         } catch (Exception e) {
             System.err.println("Error al generar recomendaciones: " + e.getMessage());
         }
@@ -173,47 +290,42 @@ public class RecommendationService {
         if (score.compareTo(BigDecimal.valueOf(7)) < 0) {
             // Calificación general NEGATIVA pero HAY calificaciones específicas:
             // SOLO procesar campos calificados explícitamente.
-            processExplicitItemRatingsOnly( // <--- MÉTODO RENOMBRADO Y LLAMADA ACTUALIZADA
+            processExplicitItemRatingsOnly(
                     reviewDTO.getDirectors(),
-                    directorsAllMovieItemsWithBaseWeight, // <--- Pasar la lista con (id, baseWeight)
+                    directorsAllMovieItemsWithBaseWeight,
                     includeDirectors, excludeDirectors,
                     BigDecimal.valueOf(2), BigDecimal.valueOf(0.20));
-            processExplicitItemRatingsOnly( // <--- MÉTODO RENOMBRADO Y LLAMADA ACTUALIZADA
+            processExplicitItemRatingsOnly(
                     reviewDTO.getActors(),
-                    actorsAllMovieItemsWithBaseWeight, // <--- Pasar la lista con (id, baseWeight posicional) para
-                                                       // actores
+                    actorsAllMovieItemsWithBaseWeight,
                     includeActors, excludeActors,
                     BigDecimal.valueOf(1.9), BigDecimal.valueOf(0.19));
-            processExplicitItemRatingsOnly( // <--- MÉTODO RENOMBRADO Y LLAMADA ACTUALIZADA
+            processExplicitItemRatingsOnly(
                     reviewDTO.getGenres(),
-                    genresAllMovieItemsWithBaseWeight, // <--- Pasar la lista con (id, baseWeight)
+                    genresAllMovieItemsWithBaseWeight,
                     includeGenres, excludeGenres,
                     BigDecimal.valueOf(1.75), BigDecimal.valueOf(0.7));
         } else {
-            // Calificación NEUTRA O POSITIVA: flujo normal (processSpecificFields ya está
-            // correcto)
             processSpecificFields(
                     reviewDTO.getDirectors(),
                     includeDirectors, excludeDirectors,
-                    directorsAllMovieItemsWithBaseWeight, // Ya se le pasaba la lista correcta
+                    directorsAllMovieItemsWithBaseWeight,
                     BigDecimal.valueOf(2), BigDecimal.valueOf(0.20),
                     score);
             processSpecificFields(
                     reviewDTO.getGenres(),
                     includeGenres, excludeGenres,
-                    genresAllMovieItemsWithBaseWeight, // Ya se le pasaba la lista correcta
+                    genresAllMovieItemsWithBaseWeight,
                     BigDecimal.valueOf(1.75), BigDecimal.valueOf(0.7),
                     score);
             processSpecificFields(
                     reviewDTO.getActors(),
                     includeActors, excludeActors,
-                    actorsAllMovieItemsWithBaseWeight, // Ya se le pasaba la lista correcta
+                    actorsAllMovieItemsWithBaseWeight,
                     BigDecimal.valueOf(1.9), BigDecimal.valueOf(0.19),
                     score);
         }
 
-        // ... (resto del método: ordenar y retornar RecommendationScoresResult sin
-        // cambios)
         includeDirectors.sort((a, b) -> b.getRight().compareTo(a.getRight()));
         includeActors.sort((a, b) -> b.getRight().compareTo(a.getRight()));
         includeGenres.sort((a, b) -> b.getRight().compareTo(a.getRight()));
@@ -226,11 +338,6 @@ public class RecommendationService {
                 includeDirectors, includeActors, includeGenres,
                 excludeDirectors, excludeActors, excludeGenres);
     }
-
-    // ... (El método processSpecificFields que ya tienes y está correcto, no
-    // necesita cambios)
-    // ... (Los métodos getFieldScore, getFieldNconst, noSpecificRatings, y la clase
-    // RecommendationScoresResult se quedan igual)
 
     // DTO simple para resultados
     public static class RecommendationScoresResult {
@@ -280,8 +387,7 @@ public class RecommendationService {
      */
     private <T> void processExplicitItemRatingsOnly(
             List<T> specificRatedItemsList,
-            List<Pair<String, BigDecimal>> allMovieItemsWithBaseWeight, // << NUEVO: Lista de (identificador,
-                                                                        // baseWeight)
+            List<Pair<String, BigDecimal>> allMovieItemsWithBaseWeight,
             List<Pair<String, BigDecimal>> includeList,
             List<Pair<String, BigDecimal>> excludeList,
             BigDecimal boostFactorForHighSpecificRating, // Factor si la calificación específica es >= 8
@@ -334,13 +440,14 @@ public class RecommendationService {
 
     // Los otros métodos de utilería y getUniqueActorsWithMultiplier se quedan
     private <T> void processSpecificFields(
-        List<T> specificRatedItemsList,
-        List<Pair<String, BigDecimal>> includeList,
-        List<Pair<String, BigDecimal>> excludeList,
-        List<Pair<String, BigDecimal>> allMovieItemsWithBaseWeight, // (identificador, baseWeightDelItem [ej. posicional para actor])
-        BigDecimal boostFactorForHighSpecificRating,
-        BigDecimal penaltyFactorForLowSpecificRating,
-        BigDecimal titleOverallScore // Calificación general de la película
+            List<T> specificRatedItemsList,
+            List<Pair<String, BigDecimal>> includeList,
+            List<Pair<String, BigDecimal>> excludeList,
+            List<Pair<String, BigDecimal>> allMovieItemsWithBaseWeight, // (identificador, baseWeightDelItem [ej.
+                                                                        // posicional para actor])
+            BigDecimal boostFactorForHighSpecificRating,
+            BigDecimal penaltyFactorForLowSpecificRating,
+            BigDecimal titleOverallScore // Calificación general de la película
     ) {
         Set<String> processedIdentifiers = new HashSet<>();
 
@@ -352,20 +459,18 @@ public class RecommendationService {
                 processedIdentifiers.add(identifier);
 
                 BigDecimal baseWeightForItem = allMovieItemsWithBaseWeight.stream()
-                    .filter(pair -> pair.getLeft().equals(identifier))
-                    .map(Pair::getRight)
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalStateException("No se encontró baseWeight para: " + identifier));
+                        .filter(pair -> pair.getLeft().equals(identifier))
+                        .map(Pair::getRight)
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalStateException("No se encontró baseWeight para: " + identifier));
 
                 // --- INICIO DE NUEVA LÓGICA "BASE + ADICIONAL" ---
-                // Componente Base: (Calificación General Película * Multiplicador Normal del Ítem)
+                // Componente Base: (Calificación General Película * Multiplicador Normal del
+                // Ítem)
                 BigDecimal componentBase = titleOverallScore.multiply(baseWeightForItem);
 
-                // Componente Específico Adicional: (Calificación Específica Usuario * Multiplicador de Categoría Específico)
-                // El multiplicador de categoría específico (9.9 para actores) lo necesitamos aquí.
-                // Lo pasaremos como un nuevo parámetro o lo deduciremos.
-                // Por ahora, usemos un valor fijo para actores como ejemplo.
-                // ESTE VALOR 9.9 DEBERÍA SER UN PARÁMETRO O CONSTANTE DE CATEGORÍA
+                // Componente Específico Adicional: (Calificación Específica Usuario *
+                // Multiplicador de Categoría Específico)
                 BigDecimal categorySpecificMultiplier;
                 if (specificItem instanceof ActorScoreDTO) {
                     categorySpecificMultiplier = new BigDecimal("9.9"); // Multiplicador específico para actores
@@ -376,7 +481,7 @@ public class RecommendationService {
                 } else {
                     categorySpecificMultiplier = BigDecimal.ONE; // Fallback
                 }
-                
+
                 BigDecimal componentSpecific = specificScoreFromUser.multiply(categorySpecificMultiplier);
 
                 // Ajustar el componentSpecific si la calificación es extrema
@@ -396,7 +501,8 @@ public class RecommendationService {
                 BigDecimal finalValue = componentBase.add(adjustedComponentSpecific);
                 // --- FIN DE NUEVA LÓGICA "BASE + ADICIONAL" ---
 
-                // Decidir si va a includeList o excludeList basado en la calificación específica del usuario
+                // Decidir si va a includeList o excludeList basado en la calificación
+                // específica del usuario
                 if (specificScoreFromUser.compareTo(BigDecimal.valueOf(7)) >= 0) {
                     includeList.add(Pair.of(identifier, finalValue));
                 } else {
@@ -546,6 +652,7 @@ public class RecommendationService {
             recommendations = recommendations.subList(0, RECOMMENDATION_LIMIT);
         }
 
+        // No hay nada
         // Si no se encontraron recomendaciones basadas en preferencias, recomendar los
         // mejores títulos
         if (recommendations.isEmpty()) {
@@ -561,32 +668,70 @@ public class RecommendationService {
     private List<TitleRecommendationDTO> findRecommendationsByScores(
             RecommendationScoresResult scores, List<String> viewedTitles) {
 
-        // Resultado combinado de todas las recomendaciones
         Map<String, TitleRecommendationDTO> allRecommendations = new HashMap<>();
+        List<CategoryPriority> categoryPriorities = new ArrayList<>();
 
-        // 1. Buscar por directores con mayor puntaje
-        if (!scores.includeDirectors.isEmpty()) {
-            List<Pair<String, BigDecimal>> topDirectors = getTopElements(scores.includeDirectors, 5);
-            Map<String, TitleRecommendationDTO> directorRecommendations = findTitlesByDirectors(topDirectors,
-                    viewedTitles);
-            mergeRecommendations(allRecommendations, directorRecommendations);
+        // 1. Recolectar la información de cada categoría y su puntaje más alto
+        // Las listas en 'scores' (includeDirectors, etc.) ya vienen ordenadas por
+        // puntaje descendente
+        // desde calculateReviewFieldScores.
+        if (scores.includeDirectors != null && !scores.includeDirectors.isEmpty()) {
+            categoryPriorities.add(new CategoryPriority(
+                    RecommendationCategory.DIRECTOR,
+                    scores.includeDirectors.get(0).getRight(), // El score del primer elemento es el más alto
+                    scores.includeDirectors));
+        }
+        if (scores.includeActors != null && !scores.includeActors.isEmpty()) {
+            categoryPriorities.add(new CategoryPriority(
+                    RecommendationCategory.ACTOR,
+                    scores.includeActors.get(0).getRight(),
+                    scores.includeActors));
+        }
+        if (scores.includeGenres != null && !scores.includeGenres.isEmpty()) {
+            categoryPriorities.add(new CategoryPriority(
+                    RecommendationCategory.GENRE,
+                    scores.includeGenres.get(0).getRight(),
+                    scores.includeGenres));
         }
 
-        // 2. Buscar por actores con mayor puntaje
-        if (!scores.includeActors.isEmpty()) {
-            List<Pair<String, BigDecimal>> topActors = getTopElements(scores.includeActors, 5);
-            Map<String, TitleRecommendationDTO> actorRecommendations = findTitlesByActors(topActors, viewedTitles);
-            mergeRecommendations(allRecommendations, actorRecommendations);
+        // 2. Ordenar las categorías para que la que tiene el ítem con el mayor puntaje
+        // global se procese primero
+        Collections.sort(categoryPriorities);
+
+        // 3. Procesar las categorías en el orden de prioridad determinado
+        for (CategoryPriority prioritizedCategory : categoryPriorities) {
+            switch (prioritizedCategory.category) {
+                case RecommendationCategory.DIRECTOR:
+                    // La lista prioritizedCategory.allScoresForCategory es scores.includeDirectors
+                    List<Pair<String, BigDecimal>> topDirectors = getTopElements(
+                            prioritizedCategory.allScoresForCategory, 5);
+                    Map<String, TitleRecommendationDTO> directorRecommendations = findTitlesByDirectors(topDirectors,
+                            viewedTitles);
+                    mergeRecommendations(allRecommendations, directorRecommendations);
+                    break;
+                case RecommendationCategory.ACTOR:
+                    // La lista prioritizedCategory.allScoresForCategory es scores.includeActors
+                    List<Pair<String, BigDecimal>> topActors = getTopElements(prioritizedCategory.allScoresForCategory,
+                            5);
+                    Map<String, TitleRecommendationDTO> actorRecommendations = findTitlesByActors(topActors,
+                            viewedTitles);
+                    mergeRecommendations(allRecommendations, actorRecommendations);
+                    break;
+                case RecommendationCategory.GENRE:
+                    // La lista prioritizedCategory.allScoresForCategory es scores.includeGenres
+                    List<Pair<String, BigDecimal>> topGenres = getTopElements(prioritizedCategory.allScoresForCategory,
+                            3);
+                    Map<String, TitleRecommendationDTO> genreRecommendations = findTitlesByGenres(topGenres,
+                            viewedTitles);
+                    mergeRecommendations(allRecommendations, genreRecommendations);
+                    break;
+            }
         }
 
-        // 3. Buscar por géneros con mayor puntaje
-        if (!scores.includeGenres.isEmpty()) {
-            List<Pair<String, BigDecimal>> topGenres = getTopElements(scores.includeGenres, 3);
-            Map<String, TitleRecommendationDTO> genreRecommendations = findTitlesByGenres(topGenres, viewedTitles);
-            mergeRecommendations(allRecommendations, genreRecommendations);
-        }
+        // Si categoryPriorities está vacía (ninguna categoría tiene elementos en
+        // 'include'),
+        // el bucle no se ejecutará y se devolverá una lista vacía, lo cual es correcto.
 
-        // Convertir el mapa a una lista
         return new ArrayList<>(allRecommendations.values());
     }
 
@@ -870,9 +1015,6 @@ public class RecommendationService {
         return TitleRecommendationDTO.builder()
                 .tconst(tconst)
                 .title(title.getPrimaryTitle())
-                .posterUrl(title.getPosterUrl())
-                .year(title.getStartYear())
-                .genres(title.getGenres())
                 .rating(rating)
                 .matchCount(0)
                 .matchScore(BigDecimal.ZERO)
@@ -960,5 +1102,25 @@ public class RecommendationService {
     private boolean isTvEpisode(String tconst) {
         Optional<Title> title = titleRepository.findById(tconst);
         return title.isPresent() && "tvEpisode".equals(title.get().getTitleType());
+    }
+
+    private static class CategoryPriority implements Comparable<CategoryPriority> {
+        RecommendationCategory category;
+        BigDecimal topScore; // El score más alto encontrado en esta categoría
+        List<Pair<String, BigDecimal>> allScoresForCategory; // La lista completa de scores para esta categoría
+
+        CategoryPriority(RecommendationCategory category, BigDecimal topScore,
+                List<Pair<String, BigDecimal>> allScores) {
+            this.category = category;
+            this.topScore = topScore;
+            this.allScoresForCategory = allScores;
+        }
+
+        @Override
+        public int compareTo(CategoryPriority other) {
+            // Ordenar en forma descendente por topScore para que la categoría con el mayor
+            // puntaje quede primera
+            return other.topScore.compareTo(this.topScore);
+        }
     }
 }

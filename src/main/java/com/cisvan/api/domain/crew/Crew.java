@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import jakarta.persistence.Access;
@@ -37,4 +38,9 @@ public class Crew {
     @Builder.Default
     @Column(name = "writers", columnDefinition = "TEXT[]", nullable = true)
     private List<String> writers = new ArrayList<>();
+
+    public List<String> getDirectors() {
+        // Opción B: Asegurar que no se devuelva null en el getter
+        return directors == null ? Collections.emptyList() : directors;
+    }
 }

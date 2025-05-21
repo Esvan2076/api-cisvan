@@ -22,6 +22,7 @@ import java.util.List;
 
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -34,7 +35,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Usará el bean de abajo
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -43,12 +44,12 @@ public class SecurityConfig {
                                 "/user/profile",
                                 "/user/profile-image",
                                 "/user/update-image-url",
-                                "/user/followers",
+                                "/user/followers", // Nota: Este también está en permitAll, revisa la lógica
                                 "/user-list/**",
                                 "/notifications/**",
-                                "/comments",
+                                "/comments", // Duplicado, una vez es suficiente
                                 "/comments-like/**",
-                                "/comments",
+                                // "/comments", // Ya listado arriba
                                 "/comments/reply",
                                 "/user/activate-notification",
                                 "/user/deactivate-notification",
@@ -56,25 +57,32 @@ public class SecurityConfig {
                                 "/reviews/submit"
                         ).authenticated()
                         .requestMatchers("/comments/admin/**").hasRole("ADMIN")
-                        .requestMatchers(
+                        .requestMatchers( // Estos son los endpoints públicos
+                                "/auth/**", // Es común tener un path base para autenticación como /auth/login, /auth/register
+                                "/user/register", // Asumiendo que tienes un endpoint de registro
+                                "/user/login",    // Asumiendo que tienes un endpoint de login
                                 "/user/resend-code",
                                 "/user/verify-email",
                                 "/user/forgot-password",
-                                "/user/reset-password",
-                                "/user/followers")
-                        .permitAll()
-                        .anyRequest().permitAll())
+                                "/user/reset-password"
+                                // "/user/followers" // Ya estaba en authenticated(), decide dónde debe ir.
+                                // Si es público para ver seguidores de otros, está bien aquí.
+                                // Si es para ver los seguidores del usuario autenticado, debe estar en authenticated().
+                        ).permitAll()
+                        .anyRequest().permitAll() // CAMBIO IMPORTANTE: Si quieres que todo lo demás sea público por defecto.
+                                                 // Si quieres que todo lo demás requiera autenticación por defecto, usa .anyRequest().authenticated()
+                )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-                .httpBasic(httpBasic -> httpBasic.disable())
+                .httpBasic(httpBasic -> httpBasic.disable()) // Si usas JWT, basic auth no es necesario
                 .build();
-    }    
+    }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedOrigins(List.of("https://zparklabs.com")); // ✅ AQUÍ el dominio correcto
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 
