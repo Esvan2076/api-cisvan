@@ -14,9 +14,12 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class NameSearchResultDTO {
-
+    
     private String nconst;
     private String primaryName;
     private String primaryProfession;
     private PrincipalTitleDTO principalTitle;
+
+    @Builder.Default
+    private boolean wasSearched = false;
 }

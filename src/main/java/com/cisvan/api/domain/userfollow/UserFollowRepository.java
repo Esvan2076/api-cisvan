@@ -56,4 +56,5 @@ public interface UserFollowRepository extends JpaRepository<UserFollow, Long> {
     // Elimina una relación de seguimiento
     int deleteByFollowerIdAndFollowedId(Long followerId, Long followedId);
 
+    List<UserFollow> findByFollowedId(Long followedId);
 }

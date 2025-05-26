@@ -9,6 +9,7 @@ import java.util.Optional;
 
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -18,8 +19,11 @@ import com.cisvan.api.domain.notification.Notification;
 import com.cisvan.api.domain.notification.NotificationRepository;
 import com.cisvan.api.domain.title.Title;
 import com.cisvan.api.domain.title.repos.TitleRepository;
+import com.cisvan.api.domain.userfollow.UserFollow;
+import com.cisvan.api.domain.userfollow.UserFollowRepository;
 import com.cisvan.api.domain.userlist.UserList;
 import com.cisvan.api.domain.userlist.UserListRepository;
+import com.cisvan.api.domain.userprestige.UserPrestige;
 import com.cisvan.api.domain.users.Users;
 import com.cisvan.api.domain.users.UsersRepository;
 
@@ -37,6 +41,7 @@ public class NotificationService {
     private final UserListRepository userListRepository;
     private final JavaMailSender mailSender;
     private final CommentRepository commentRepository;
+    private final UserFollowRepository userFollowRepository;
 
     public List<Notification> getNotificationsForUser(Long userId) {
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
@@ -198,4 +203,68 @@ public class NotificationService {
             System.err.println("Error al enviar el correo: " + e.getMessage());
         }
     }
+
+    @Async
+    public void notifyFollowersOfNewReview(Long authorUserId) {
+        // Buscar a todos los seguidores del usuario
+        List<UserFollow> followers = userFollowRepository.findByFollowedId(authorUserId);
+
+        if (followers.isEmpty()) return;
+
+        // Obtener el nombre del autor para el mensaje
+        Optional<Users> authorOpt = userRepository.findById(authorUserId);
+        if (authorOpt.isEmpty()) return;
+
+        Users author = authorOpt.get();
+        String referenceName = author.getUsername(); // o puedes incluir título si quieres más contexto
+
+        for (UserFollow follow : followers) {
+            Long followerId = follow.getFollowerId();
+
+            // Crear notificación
+            Notification notification = Notification.builder()
+                    .userId(followerId)
+                    .code("NTF06")
+                    .referenceType("USER")
+                    .referenceId(String.valueOf(authorUserId))
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            notificationRepository.save(notification);
+
+            // Si el usuario quiere email
+            Optional<Users> followerUserOpt = userRepository.findById(followerId);
+            if (followerUserOpt.isPresent() && followerUserOpt.get().getEmailNotifications()) {
+                String message = notificationMessageService.resolveMessage("NTF06", referenceName);
+                sendSimpleEmail(followerUserOpt.get().getEmail(), "Nueva reseña publicada", message);
+            }
+        }
+    }
+
+    public void notifyPrestigeLevelUp(UserPrestige prestige) {
+
+        Long userId = prestige.getUserId();
+        Optional<Users> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) return;
+
+        Users user = userOpt.get();
+
+        // Crear y guardar la notificación
+        Notification notification = Notification.builder()
+                .userId(userId)
+                .code("NTF04")
+                .referenceType("USER")
+                .referenceId(userId.toString())
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        notificationRepository.save(notification);
+
+        // Enviar email si está activado
+        if (user.getEmailNotifications()) {
+            String message = "¡Has subido de rango! 🎖️";
+            sendSimpleEmail(user.getEmail(), "Ascenso de prestigio", message);
+        }
+    }
+
 }

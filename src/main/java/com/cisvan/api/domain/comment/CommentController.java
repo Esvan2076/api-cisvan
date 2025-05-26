@@ -12,6 +12,7 @@ import com.cisvan.api.domain.comment.dto.CommentContentDTO;
 import com.cisvan.api.domain.comment.dto.CommentResponseDTO;
 import com.cisvan.api.domain.comment.dto.CreateCommentDTO;
 import com.cisvan.api.domain.comment.dto.CreateReplyCommentDTO;
+import com.cisvan.api.domain.comment.dto.ReportedCommentAdminDTO;
 import com.cisvan.api.helper.ControllerHelper;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -96,5 +97,23 @@ public class CommentController {
     public ResponseEntity<?> deleteComment(@PathVariable Long commentId, HttpServletRequest request) {
         commentOrchestrator.deleteComment(commentId, request);
         return ResponseEntity.noContent().build(); // HTTP 204
+    }
+
+    @PutMapping("/{id}/report")
+    public ResponseEntity<?> reportComment(@PathVariable Long id, HttpServletRequest request) {
+        commentOrchestrator.reportComment(id, request);
+        return ResponseEntity.ok().build(); // OK sin contenido
+    }
+
+    @PutMapping("/admin/unreport/{commentId}")
+    public ResponseEntity<?> unreportCommentAsAdmin(@PathVariable Long commentId) {
+        commentService.unreportComment(commentId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/admin/reported")
+    public ResponseEntity<List<ReportedCommentAdminDTO>> getReportedComments() {
+        List<ReportedCommentAdminDTO> reported = commentOrchestrator.getReportedComments();
+        return ResponseEntity.ok(reported);
     }
 }

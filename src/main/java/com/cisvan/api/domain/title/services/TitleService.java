@@ -1,5 +1,6 @@
 package com.cisvan.api.domain.title.services;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,6 +13,8 @@ import com.cisvan.api.domain.title.dtos.TitleKnownForDTO;
 import com.cisvan.api.domain.title.dtos.TitleShowDTO;
 import com.cisvan.api.domain.title.dtos.searchDTO.TitleAdvancedSearchDTO;
 import com.cisvan.api.domain.title.repos.TitleRepository;
+import com.cisvan.api.domain.titlerating.TitleRating;
+import com.cisvan.api.domain.titlerating.TitleRatingRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 public class TitleService {
 
     private final TitleRepository titleRepository;
+    private final TitleRatingRepository titleRatingRepository;
 
     public boolean existsById(String tconst) {
         return titleRepository.existsById(tconst);
@@ -57,6 +61,36 @@ public class TitleService {
         List<TitleShowDTO> trendingContentDetails = titleRepository.findTrendingContentDetails(topContentIds);
     
         return trendingContentDetails;
+    }
+
+    public Optional<TitleShowDTO> getTitleShowDTOById(String tconst) {
+        Optional<Title> titleOpt = titleRepository.findById(tconst);
+
+        if (titleOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Title title = titleOpt.get();
+
+        // Valor inicial
+        BigDecimal averageRating = null;
+
+        // Buscar el rating
+        Optional<TitleRating> ratingOpt = titleRatingRepository.findById(tconst);
+        if (ratingOpt.isPresent()) {
+            averageRating = ratingOpt.get().getAverageRating();
+        }
+
+        // Construcción del DTO
+        TitleShowDTO dto = TitleShowDTO.builder()
+            .tconst(title.getTconst())
+            .primaryTitle(title.getPrimaryTitle())
+            .posterUrl(title.getPosterUrl()) // getPosterUrl() en DTO ya formatea correctamente
+            .averageRating(averageRating)
+            .inUserList(false) // Por defecto en este contexto
+            .build();
+
+        return Optional.of(dto);
     }
 }
 

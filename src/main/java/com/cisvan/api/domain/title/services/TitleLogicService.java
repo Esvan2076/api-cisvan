@@ -12,6 +12,8 @@ import com.cisvan.api.domain.episode.EpisodeRepository;
 import com.cisvan.api.domain.name.Name;
 import com.cisvan.api.domain.name.repos.NameRepository;
 import com.cisvan.api.domain.principal.repos.PrincipalRepository;
+import com.cisvan.api.domain.recommendation.userfinalrecommendation.UserFinalRecommendation;
+import com.cisvan.api.domain.recommendation.userfinalrecommendation.UserFinalRecommendationRepository;
 import com.cisvan.api.domain.title.Title;
 import com.cisvan.api.domain.title.dtos.TitleShowDTO;
 import com.cisvan.api.domain.title.dtos.searchDTO.MovieSearchResultDTO;
@@ -29,6 +31,8 @@ public class TitleLogicService {
     private final NameRepository nameRepository;
     private final PrincipalRepository principalRepository;
     private final EpisodeRepository episodeRepository;
+    private final UserFinalRecommendationRepository userFinalRecommendationRepository;
+    private final TitleService titleService;
 
     public void adjustForEpisode(Title title, String tconst) {
         if (!"tvEpisode".equalsIgnoreCase(title.getTitleType())) {
@@ -118,5 +122,29 @@ public class TitleLogicService {
             dto.setInUserList(true); // Siempre en lista
             return dto;
         }).toList();
+    }
+
+    public List<TitleShowDTO> getRecommendedTitlesForUser(Users user) {
+        List<UserFinalRecommendation> recommendations =
+            userFinalRecommendationRepository.findByUserIdOrderByRankForUserAsc(user.getId());
+
+        return recommendations.stream()
+            .map(rec -> titleService.getTitleShowDTOById(rec.getTconst()))
+            .filter(Optional::isPresent)
+            .map(Optional::get)
+            .peek(dto -> dto.setInUserList(false)) // Puedes personalizar esto si quieres marcar como ya visto
+            .toList();
+    }
+
+    public List<TitleShowDTO> getRecommendedTitlesForUserId(Long userId) {
+        List<UserFinalRecommendation> recommendations =
+            userFinalRecommendationRepository.findByUserIdOrderByRankForUserAsc(userId);
+
+        return recommendations.stream()
+            .map(rec -> titleService.getTitleShowDTOById(rec.getTconst()))
+            .filter(Optional::isPresent)
+            .map(Optional::get)
+            .peek(dto -> dto.setInUserList(false)) // Opcional: puedes marcar si está en lista
+            .toList();
     }
 }

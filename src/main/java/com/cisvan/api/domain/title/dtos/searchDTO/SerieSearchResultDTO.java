@@ -6,6 +6,7 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class SerieSearchResultDTO extends ContentSearchResultDTO {
-
+    
     private Short endYear;
+    private boolean wasSearched = false;
 }

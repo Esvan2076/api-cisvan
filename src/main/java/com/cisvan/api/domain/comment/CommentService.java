@@ -89,4 +89,17 @@ public class CommentService {
     public Optional<String> findRootTconst(Long commentId) {
         return commentRepository.findRootTconst(commentId);
     }
+
+    public void unreportComment(Long commentId) {
+        Optional<Comment> optionalComment = commentRepository.findById(commentId);
+        if (optionalComment.isEmpty()) return;
+
+        Comment comment = optionalComment.get();
+        comment.setIsReported(false);
+        commentRepository.save(comment);
+    }
+
+    public List<Comment> getReportedComments() {
+        return commentRepository.findByIsReportedTrueOrderByCreatedAtDesc();
+    }
 }

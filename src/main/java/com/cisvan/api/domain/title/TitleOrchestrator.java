@@ -24,10 +24,13 @@ import com.cisvan.api.domain.title.dtos.TitleKnownForDTO;
 import com.cisvan.api.domain.title.dtos.TitleShowDTO;
 import com.cisvan.api.domain.title.dtos.searchDTO.TitleAdvancedSearchDTO;
 import com.cisvan.api.domain.title.mappers.TitleMapper;
+import com.cisvan.api.domain.title.repos.TitleRepository;
 import com.cisvan.api.domain.title.services.TitleLogicService;
 import com.cisvan.api.domain.title.services.TitleService;
 import com.cisvan.api.domain.titlerating.TitleRatingRepository;
+import com.cisvan.api.domain.trending.Trending;
 import com.cisvan.api.domain.trending.TrendingRepository;
+import com.cisvan.api.domain.trending.TrendingService;
 import com.cisvan.api.domain.trending.dtos.TrendingScoreDTO;
 import com.cisvan.api.domain.userlist.UserListService;
 import com.cisvan.api.domain.users.Users;
@@ -51,6 +54,8 @@ public class TitleOrchestrator {
     private final StreamingLogicService streamingLogicService;
     private final AkasLogicService akasLogicService;
     private final TrendingRepository trendingRepository;
+    private final TrendingService trendingService;
+    private final TitleRepository titleRepository;
 
     public Optional<TitleBasicDTO> getTitleBasicById(String tconst, HttpServletRequest request) {
         Optional<Title> titleOpt = titleService.getTitleById(tconst);
@@ -59,6 +64,11 @@ public class TitleOrchestrator {
         }
     
         Title title = titleOpt.get();
+
+        Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
+        if (!userOpt.isEmpty()) {
+            userOpt.ifPresent(user -> trendingService.registerVisitPoint(user.getId(), tconst));
+        }
     
         // Ajustes si es episodio
         titleLogicService.adjustForEpisode(title, tconst);
@@ -171,20 +181,55 @@ public class TitleOrchestrator {
     
         return nonSeries;
     }
-    
+        
     public List<TitleShowDTO> getTop20Trending(HttpServletRequest request) {
         List<String> userTconstList = getUserTitleIds(request);
-        List<TitleShowDTO> trending = titleService.getTop20Trending();
-    
         Set<String> userTconstSet = new HashSet<>(userTconstList);
-    
-        for (TitleShowDTO title : trending) {
-            if (userTconstSet.contains(title.getTconst())) {
-                title.setInUserList(true);
+
+        // 1. Obtener trending activos con score > 0
+        List<Trending> trendingCandidates = trendingRepository.findAllByScoreGreaterThan(0);
+
+        List<TitleShowDTO> result = new ArrayList<>();
+        Set<String> includedTconsts = new HashSet<>();
+
+        // 2. Convertir a DTO y marcar en lista del usuario
+        for (Trending t : trendingCandidates) {
+            titleService.getTitleShowDTOById(t.getContentId()).ifPresent(dto -> {
+                dto.setInUserList(userTconstSet.contains(dto.getTconst()));
+                result.add(dto);
+                includedTconsts.add(dto.getTconst());
+            });
+        }
+
+        // 3. Rellenar con títulos más votados (excluyendo episodios y los ya añadidos)
+        int remaining = 20 - result.size();
+        if (remaining > 0) {
+            List<Object[]> fallback = titleRepository.findFallbackTitlesForTrending(includedTconsts, remaining);
+            for (Object[] row : fallback) {
+                String tconst = (String) row[0];
+                titleService.getTitleShowDTOById(tconst).ifPresent(dto -> {
+                    dto.setInUserList(userTconstSet.contains(dto.getTconst()));
+                    result.add(dto);
+                });
             }
         }
-    
-        return trending;
+
+        return result;
+    }
+
+    public List<TitleShowDTO> getFinalRecommendations(HttpServletRequest request) {
+        Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
+        if (userOpt.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Users user = userOpt.get();
+
+        return titleLogicService.getRecommendedTitlesForUser(user);
+    }
+
+    public List<TitleShowDTO> getFinalRecommendationsByUserId(Long userId) {
+        return titleLogicService.getRecommendedTitlesForUserId(userId);
     }
       
     public List<String> getUserTitleIds(HttpServletRequest request) {

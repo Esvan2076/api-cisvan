@@ -20,6 +20,17 @@ public class OperationResult {
         return OperationResult.builder().errors(errorDetails).build();
     }
 
+    public static OperationResult error(String message) {
+        ErrorDetail error = ErrorDetail.builder()
+                .field("global")  // puedes cambiar a null si prefieres sin campo específico
+                .message(message)
+                .build();
+        return OperationResult.builder()
+                .errors(List.of(error))
+                .build();
+    }
+
+
     public boolean hasErrors() {
         return errors != null && !errors.isEmpty();
     }

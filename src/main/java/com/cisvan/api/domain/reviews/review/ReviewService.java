@@ -1,10 +1,9 @@
 package com.cisvan.api.domain.reviews.review;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -17,10 +16,6 @@ import org.springframework.stereotype.Service;
 
 import com.cisvan.api.domain.comment.Comment;
 import com.cisvan.api.domain.comment.CommentRepository;
-import com.cisvan.api.domain.comment.CommentService;
-import com.cisvan.api.domain.commentLike.CommentLikeRepository;
-import com.cisvan.api.domain.name.Name;
-import com.cisvan.api.domain.name.repos.NameRepository;
 import com.cisvan.api.domain.reviews.dtos.ReviewResponseDTO;
 import com.cisvan.api.domain.reviews.dtos.TitleReviewDTO;
 import com.cisvan.api.domain.reviews.userGenresRating.UserGenresRating;
@@ -33,10 +28,7 @@ import com.cisvan.api.domain.reviews.userTitleRating.UserTitleRating;
 import com.cisvan.api.domain.reviews.userTitleRating.UserTitleRatingId;
 import com.cisvan.api.domain.reviews.userTitleRating.UserTitleRatingRepository;
 import com.cisvan.api.domain.title.repos.TitleRepository;
-import com.cisvan.api.domain.userprestige.UserPrestige;
-import com.cisvan.api.domain.userprestige.UserPrestigeRepository;
-import com.cisvan.api.domain.users.UsersRepository;
-import com.cisvan.api.domain.users.dto.response.UserSummaryPrestigeDTO;
+import com.cisvan.api.domain.trending.TrendingService;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -51,11 +43,8 @@ public class ReviewService {
     private final UserGenresRatingRepository userGenresRatingRepository;
     private final UserNameRatingRepository userNameRatingRepository;
     private final TitleRepository titleRepository;
-    private final UserPrestigeRepository userPrestigeRepository;
-    private final UsersRepository userRepository;
-    private final NameRepository nameRepository;
-    private final CommentService commentService;
-    private final CommentLikeRepository commentLikeRepository;
+    private final ReviewDtoBuilder reviewDtoBuilder;
+    private final TrendingService trendingService;
 
     @Transactional
     public Long createFullReview(TitleReviewDTO reviewDTO, Long userId) {
@@ -114,6 +103,13 @@ public class ReviewService {
         saveAdditionalRatings(savedReview, reviewDTO, userId);
 
         System.out.println("Reseña completa creada exitosamente con ID: " + savedReview.getId());
+
+        // Evaluar si hay campos extra calificados
+        boolean hasExtraRatings = !reviewDTO.getGenres().isEmpty() || !reviewDTO.getActors().isEmpty() || !reviewDTO.getDirectors().isEmpty();
+
+        // Registrar puntos de tendencia
+        trendingService.registerReviewPoints(userId, reviewDTO.getTconst(), hasExtraRatings);
+        
         return savedReview.getId();
     }
 
@@ -159,129 +155,52 @@ public class ReviewService {
         });
     }
         
-public Page<ReviewResponseDTO> getPaginatedReviewByLikes(int page, String tconst, Long paraUserId) {
-        Pageable initialPageable = PageRequest.of(page, 1, Sort.by(Sort.Direction.DESC, "likeCount"));
-        Page<Comment> commentsPage = commentRepository.findByTconstAndIsReviewTrueOrderByLikeCountDesc(tconst, initialPageable);
-        Pageable finalPageableUsed = initialPageable; // Para usar en el PageImpl final
+    public Page<ReviewResponseDTO> getPaginatedReviewByLikes(int page, String tconst, Long paraUserId) {
+        Pageable pageable = PageRequest.of(page, 1, Sort.by(Sort.Direction.DESC, "likeCount"));
+        Page<Comment> commentsPage = commentRepository.findByTconstAndIsReviewTrueOrderByLikeCountDesc(tconst, pageable);
+        Pageable usedPageable = pageable;
 
-        // Si la página solicitada inicialmente no tiene contenido
         if (!commentsPage.hasContent()) {
             if (commentsPage.getTotalPages() > 0) {
-                // Hay comentarios en total, pero la página solicitada estaba vacía (quizás fuera de rango).
-                // Ir a la última página que sí tiene contenido.
-                int lastActualPage = commentsPage.getTotalPages() - 1;
-                finalPageableUsed = PageRequest.of(lastActualPage, 1, Sort.by(Sort.Direction.DESC, "likeCount"));
-                commentsPage = commentRepository.findByTconstAndIsReviewTrueOrderByLikeCountDesc(tconst, finalPageableUsed);
+                int lastPage = commentsPage.getTotalPages() - 1;
+                usedPageable = PageRequest.of(lastPage, 1, Sort.by(Sort.Direction.DESC, "likeCount"));
+                commentsPage = commentRepository.findByTconstAndIsReviewTrueOrderByLikeCountDesc(tconst, usedPageable);
             } else {
-                // No hay ningún comentario de reseña para este tconst.
-                return new PageImpl<>(Collections.emptyList(), initialPageable, 0);
+                return new PageImpl<>(Collections.emptyList(), pageable, 0);
             }
         }
 
-        // Después de cualquier ajuste, si sigue sin contenido, no hay nada que procesar.
         if (!commentsPage.hasContent()) {
-            // Esto podría ocurrir si getTotalPages() > 0 pero la última página está vacía (poco probable si pageSize=1 y hay elementos)
-            // O simplemente como una doble verificación.
-            return new PageImpl<>(Collections.emptyList(), finalPageableUsed, commentsPage.getTotalElements());
+            return new PageImpl<>(Collections.emptyList(), usedPageable, commentsPage.getTotalElements());
         }
 
-        // AHORA es seguro acceder a getContent().get(0), esta es la antigua línea 176
         Comment comment = commentsPage.getContent().get(0);
-
         Optional<Review> reviewOpt = reviewRepository.findByCommentId(comment.getId());
+
         if (reviewOpt.isEmpty()) {
-            // Esto indica un problema de integridad de datos si un comentario de reseña existe sin su entidad Review.
-            // Considera loggear un error más formal.
-            System.err.println("Error de integridad de datos: No se encontró Review para Comment ID: " + comment.getId());
-            // Devuelve una página vacía consistente con la firma del método.
-            return new PageImpl<>(Collections.emptyList(), finalPageableUsed, commentsPage.getTotalElements());
+            System.err.println("No se encontró Review para Comment ID: " + comment.getId());
+            return new PageImpl<>(Collections.emptyList(), usedPageable, commentsPage.getTotalElements());
         }
+
         Review review = reviewOpt.get();
+        ReviewResponseDTO dto = reviewDtoBuilder.buildFromReview(review, paraUserId);
 
-        String titleName = titleRepository.findPrimaryTitleByTconst(tconst)
-                .orElse("Título desconocido");
+        return new PageImpl<>(List.of(dto), usedPageable, commentsPage.getTotalElements());
+    }
 
-        BigDecimal score = userTitleRatingRepository.findById_ReviewId(review.getId())
-                .map(UserTitleRating::getRating)
-                .orElse(BigDecimal.ZERO);
+    public Page<ReviewResponseDTO> getPaginatedReviewsByUser(int page, Long targetUserId, Long viewerUserId) {
+        Pageable pageable = PageRequest.of(page, 1, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Review> reviews = reviewRepository.findByUserId(targetUserId, pageable);
 
-        UserSummaryPrestigeDTO userDto = null;
-        if (comment.getUserId() != null) {
-            Long commentUserId = comment.getUserId();
-            userDto = userRepository.findById(commentUserId)
-                    .map(user -> {
-                        Optional<UserPrestige> prestigeOpt = userPrestigeRepository.findById(commentUserId);
-                        short currentRank = prestigeOpt.map(UserPrestige::getCurrentRank).orElse((short) 0);
-                        String trendDirection = prestigeOpt.map(UserPrestige::getTrendDirection).orElse(null);
-                        return UserSummaryPrestigeDTO.builder()
-                                .id(user.getId())
-                                .username(user.getUsername())
-                                .profileImageUrl(user.getProfileImageUrl())
-                                .currentRank(currentRank)
-                                .trendDirection(trendDirection)
-                                .build();
-                    })
-                    .orElse(null);
+        if (!reviews.hasContent()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, reviews.getTotalElements());
         }
 
-        boolean likedByMe = commentLikeRepository.existsById_UserIdAndId_CommentId(paraUserId, comment.getId());
-        int replyCount = commentService.countRepliesRecursively(comment.getId());
-
-        List<UserNameRating> userNameRatings = userNameRatingRepository.findById_ReviewId(review.getId());
-        List<String> nconsts = userNameRatings.stream()
-                .map(rating -> rating.getId().getNconst())
+        List<ReviewResponseDTO> dtoList = reviews.stream()
+                .map(review -> reviewDtoBuilder.buildFromReview(review, viewerUserId))
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        List<Name> names = nconsts.isEmpty() ? Collections.emptyList() : nameRepository.findByNconstIn(nconsts);
-
-        List<ReviewResponseDTO.ActorRatingDTO> actorRatings = new ArrayList<>();
-        List<ReviewResponseDTO.DirectorRatingDTO> directorRatings = new ArrayList<>();
-
-        for (UserNameRating rating : userNameRatings) {
-            String nconst = rating.getId().getNconst();
-            Optional<Name> nameOpt = names.stream()
-                    .filter(name -> name.getNconst().equals(nconst))
-                    .findFirst();
-            
-            String primaryName = nameOpt.map(Name::getPrimaryName).orElse("Desconocido");
-            List<String> professions = nameOpt.map(Name::getPrimaryProfession).orElse(Collections.emptyList());
-
-            // Usar equalsIgnoreCase para ser más robusto con los nombres de profesión si es necesario
-            if (professions.stream().anyMatch(p -> p.equalsIgnoreCase("actor") || p.equalsIgnoreCase("actress"))) {
-                actorRatings.add(new ReviewResponseDTO.ActorRatingDTO(primaryName, rating.getRating()));
-            }
-            if (professions.stream().anyMatch(p -> p.equalsIgnoreCase("director"))) {
-                directorRatings.add(new ReviewResponseDTO.DirectorRatingDTO(primaryName, rating.getRating()));
-            }
-        }
-
-        List<UserGenresRating> genreRatingsDb = userGenresRatingRepository.findById_ReviewId(review.getId());
-        List<ReviewResponseDTO.GenreRatingDTO> genres = genreRatingsDb.stream()
-                .map(gr -> new ReviewResponseDTO.GenreRatingDTO(gr.getId().getGenre(), gr.getRating()))
-                .collect(Collectors.toList());
-
-        ReviewResponseDTO.CommentContentDTO commentDTO = ReviewResponseDTO.CommentContentDTO.builder()
-                .id(comment.getId() != null ? comment.getId() : 0L)
-                .commentText(comment.getCommentText())
-                .likeCount(comment.getLikeCount())
-                .containsSpoiler(comment.getContainsSpoiler())
-                .createdAt(comment.getCreatedAt())
-                .user(userDto)
-                .likedByMe(likedByMe)
-                .replyCount(replyCount)
-                .build();
-
-        ReviewResponseDTO reviewResponseDTO = ReviewResponseDTO.builder()
-                .reviewId(review.getId())
-                .comment(commentDTO)
-                .titleName(titleName)
-                .score(score)
-                .genres(genres)
-                .actors(actorRatings)
-                .directors(directorRatings)
-                .build();
-
-        // Usar el Pageable que realmente se utilizó para obtener el contenido
-        return new PageImpl<>(List.of(reviewResponseDTO), finalPageableUsed, commentsPage.getTotalElements());
+        return new PageImpl<>(dtoList, pageable, reviews.getTotalElements());
     }
 }

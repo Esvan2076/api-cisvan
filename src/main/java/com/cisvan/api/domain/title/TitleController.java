@@ -68,7 +68,7 @@ public class TitleController {
         List<Object> results = titleOrchestrator.searchEverything(query);
         return ResponseEntity.ok(results);
     }
-
+    
     @PostMapping("/advanced-search")
     public ResponseEntity<Page<TitleKnownForDTO>> fetchTitleWithAdvancedSearch(
             @RequestBody TitleAdvancedSearchDTO filters,
@@ -106,5 +106,15 @@ public class TitleController {
         }
 
         return ResponseEntity.ok(reviewData.get());
+    }
+
+    @GetMapping("/recommendations")
+    public ResponseEntity<?> fetchFinalRecommendations(HttpServletRequest request) {
+        return ResponseEntity.ok(titleOrchestrator.getFinalRecommendations(request));
+    }
+
+    @GetMapping("/recommendations/{userId}")
+    public ResponseEntity<?> fetchFinalRecommendationsByUserId(@PathVariable Long userId) {
+        return ResponseEntity.ok(titleOrchestrator.getFinalRecommendationsByUserId(userId));
     }
 }

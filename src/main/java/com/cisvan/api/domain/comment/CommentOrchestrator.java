@@ -7,14 +7,17 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.stereotype.Service;
 
+import com.cisvan.api.common.OperationResult;
 import com.cisvan.api.domain.comment.dto.CommentContentDTO;
 import com.cisvan.api.domain.comment.dto.CommentResponseDTO;
 import com.cisvan.api.domain.comment.dto.CreateCommentDTO;
 import com.cisvan.api.domain.comment.dto.CreateReplyCommentDTO;
+import com.cisvan.api.domain.comment.dto.ReportedCommentAdminDTO;
 import com.cisvan.api.domain.commentLike.CommentLikeService;
 import com.cisvan.api.domain.notification.services.NotificationService;
 import com.cisvan.api.domain.title.Title;
 import com.cisvan.api.domain.title.services.TitleService;
+import com.cisvan.api.domain.trending.TrendingService;
 import com.cisvan.api.domain.userprestige.UserPrestigeService;
 import com.cisvan.api.domain.userprestige.dtos.UserPrestigeDTO;
 import com.cisvan.api.domain.users.Users;
@@ -38,6 +41,7 @@ public class CommentOrchestrator {
     private final NotificationService notificationService;
     private final CommentLikeService commentLikeService;
     private final UserPrestigeService userPrestigeService;
+    private final TrendingService trendingService;
     
     public Optional<Comment> createComment(CreateCommentDTO dto, HttpServletRequest request) {
 
@@ -58,7 +62,13 @@ public class CommentOrchestrator {
             .createdAt(LocalDateTime.now())
             .build();
     
-            Comment result = commentService.saveComment(comment);
+        Comment result = commentService.saveComment(comment);
+
+        // Solo si es comentario a título (no respuesta)
+        if (dto.getTconst() != null) {
+            trendingService.registerCommentPoints(user.getId(), dto.getTconst());
+        }
+
         return Optional.of(result);
     }
 
@@ -87,11 +97,12 @@ public class CommentOrchestrator {
     
         // Obtener el ID del contenido (tconst) subiendo por la jerarquía de comentarios
         Optional<String> contentIdOpt = commentService.findRootTconst(dto.getParentCommentId());
-    
-        // Si el ID del contenido se obtuvo correctamente, enviar la notificación
-        contentIdOpt.ifPresent(contentId -> 
-            notificationService.notifyReplyComment(dto.getReplyToUserId(), contentId)
-        );
+
+        // Si el ID del contenido se obtuvo correctamente:
+        contentIdOpt.ifPresent(contentId -> {
+            notificationService.notifyReplyComment(dto.getReplyToUserId(), contentId);
+            trendingService.registerReplyPoints(user.getId(), contentId); // 👈 Nuevo para tendencia
+        });
     
         return Optional.of(result);
     }    
@@ -190,4 +201,71 @@ public class CommentOrchestrator {
         Long userId = userOpt.get().getId();
         commentService.deleteComment(commentId, userId);
     }
+
+    public Optional<OperationResult> reportComment(Long commentId, HttpServletRequest request) {
+        Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
+        if (userOpt.isEmpty()) {
+            return Optional.of(OperationResult.error("No autorizado para reportar este comentario."));
+        }
+
+        Optional<Comment> commentOpt = commentService.getById(commentId);
+        if (commentOpt.isEmpty()) {
+            return Optional.of(OperationResult.error("Comentario no encontrado."));
+        }
+
+        Comment comment = commentOpt.get();
+
+        if (Boolean.TRUE.equals(comment.getIsReported())) {
+            return Optional.of(OperationResult.error("Este comentario ya fue reportado."));
+        }
+
+        comment.setIsReported(true);
+        commentService.saveComment(comment);
+
+        return Optional.empty(); // éxito
+    }
+
+    public List<ReportedCommentAdminDTO> getReportedComments() {
+        List<Comment> reportedComments = commentService.getReportedComments();
+
+        return reportedComments.stream().map(comment -> {
+            // Usuario que escribió el comentario
+            Users user = userService.getById(comment.getUserId()).orElse(null);
+            UserPrestigeDTO prestige = userPrestigeService.getPrestigeDTOByUserId(comment.getUserId()).orElse(null);
+            UserSummaryPrestigeDTO userDTO = userMapper.toSummaryPrestige(user, prestige);
+
+            // Obtener título (directamente o recursivamente si es respuesta)
+            String tconst = comment.getTconst();
+            if (tconst == null) {
+                tconst = commentService.findRootTconst(comment.getId()).orElse(null);
+            }
+
+            String titleName = null;
+            if (tconst != null) {
+                titleName = titleService.getTitleById(tconst)
+                    .map(Title::getPrimaryTitle)
+                    .orElse(null);
+            }
+
+            // Usuario al que se responde, si aplica
+            Long replyToUserId = comment.getReplyToUserId();
+            String replyToUsername = null;
+            if (replyToUserId != null) {
+                replyToUsername = userService.getById(replyToUserId)
+                    .map(Users::getUsername)
+                    .orElse(null);
+            }
+
+            return ReportedCommentAdminDTO.builder()
+                .id(comment.getId())
+                .commentText(comment.getCommentText())
+                .tconst(tconst)
+                .primaryTitle(titleName)
+                .user(userDTO)
+                .replyToUserId(replyToUserId)
+                .replyToUsername(replyToUsername)
+                .build();
+        }).toList();
+    }
+
 }

@@ -2,6 +2,7 @@ package com.cisvan.api.domain.title.repos;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -208,4 +209,16 @@ public interface TitleRepository extends JpaRepository<Title, String>, TitleCust
                    "AND t.tconst NOT IN (:excludedTitles) " +
                    "AND t.title_type != 'tvEpisode'", nativeQuery = true)
     List<String> findTitlesByGenre(@Param("genre") String genre, @Param("excludedTitles") List<String> excludedTitles);
+
+    @Query("""
+        SELECT b.tconst, 0 AS defaultScore
+        FROM Title b
+        JOIN TitleRating r ON b.tconst = r.tconst
+        WHERE b.titleType <> 'tvEpisode'
+        AND b.startYear IN (2024, 2025)
+        AND b.tconst NOT IN :excluded
+        ORDER BY r.numVotes DESC
+        LIMIT :limit
+    """)
+    List<Object[]> findFallbackTitlesForTrending(@Param("excluded") Set<String> excluded, @Param("limit") int limit);
 }

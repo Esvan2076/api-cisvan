@@ -783,45 +783,68 @@ public class RecommendationService {
     }
 
     /**
-     * Encuentra títulos por actores
+     * Encuentra títulos por actores, considerando solo el rol más prominente del actor en cada título.
      */
     private Map<String, TitleRecommendationDTO> findTitlesByActors(
-            List<Pair<String, BigDecimal>> actors, List<String> viewedTitles) {
+            List<Pair<String, BigDecimal>> topRatedActorsFromReview, // Lista de actores con alto puntaje de la reseña
+            List<String> viewedTitles) {
 
         Map<String, TitleRecommendationDTO> recommendations = new HashMap<>();
 
-        for (Pair<String, BigDecimal> actor : actors) {
-            String nconst = actor.getLeft();
-            BigDecimal score = actor.getRight();
+        for (Pair<String, BigDecimal> ratedActor : topRatedActorsFromReview) {
+            String actorNconst = ratedActor.getLeft(); // nconst del actor bien calificado en la reseña
+            BigDecimal actorReviewScore = ratedActor.getRight(); // Puntaje que este actor obtuvo en la reseña
 
-            // Consultar títulos en los que este actor ha participado
-            List<Pair<String, Short>> actorTitles = getTitleOrderingPairs(nconst);
+            // 1. Obtener todos los títulos y roles (ordering) para este actor
+            List<Pair<String, Short>> allRolesForActor = getTitleOrderingPairs(actorNconst);
 
-            for (Pair<String, Short> titleInfo : actorTitles) {
-                String tconst = titleInfo.getLeft();
-                Short ordering = titleInfo.getRight();
+            // 2. Agrupar por tconst (película) y quedarse con el 'ordering' más bajo (más prominente)
+            //    para este actor en cada película en la que participó.
+            Map<String, Short> mostProminentRoleInEachTitle = new HashMap<>();
+            for (Pair<String, Short> roleInfo : allRolesForActor) {
+                String tconst = roleInfo.getLeft();
+                Short currentOrdering = roleInfo.getRight();
+
+                // Si la película no está en el mapa, o si este rol es más prominente (menor 'ordering')
+                // que el ya registrado para esta película, lo actualizamos.
+                if (!mostProminentRoleInEachTitle.containsKey(tconst) || 
+                    (currentOrdering != null && currentOrdering < mostProminentRoleInEachTitle.get(tconst))) {
+                    mostProminentRoleInEachTitle.put(tconst, currentOrdering);
+                }
+            }
+
+            // 3. Ahora, para cada película en la que este actor participó (considerando solo su rol más prominente),
+            //    actualizar las recomendaciones.
+            for (Map.Entry<String, Short> titleEntry : mostProminentRoleInEachTitle.entrySet()) {
+                String tconst = titleEntry.getKey();
+                Short mostProminentOrdering = titleEntry.getValue();
 
                 // Excluir títulos ya vistos y episodios de TV
                 if (viewedTitles.contains(tconst) || isTvEpisode(tconst)) {
                     continue;
                 }
 
-                // Calcular puntaje ajustado basado en la importancia del actor (ordering)
-                BigDecimal adjustedScore = adjustScoreByOrdering(score, ordering);
+                // El 'actorReviewScore' es el score base que este actor aporta por haber sido
+                // bien calificado en la reseña. Este score se ajusta según la importancia
+                // de su rol (mostProminentOrdering) en ESTA película específica.
+                BigDecimal adjustedScoreForThisMovie = adjustScoreByOrdering(actorReviewScore, mostProminentOrdering);
 
-                // Crear o actualizar la recomendación
+                // Crear o actualizar la recomendación para esta película (tconst)
                 TitleRecommendationDTO recommendation = recommendations.getOrDefault(
                         tconst, createBasicRecommendation(tconst));
+                
+                if (recommendation == null) { // Si createBasicRecommendation devolvió null (título no encontrado)
+                    continue;
+                }
 
-                // Actualizar coincidencias y puntuación
+                // Incrementar el contador de coincidencias en 1 (este actor bien calificado coincide con esta película)
                 recommendation.setMatchCount(recommendation.getMatchCount() + 1);
-                recommendation.setMatchScore(recommendation.getMatchScore().add(adjustedScore));
+                // Sumar el puntaje ajustado de este actor para esta película
+                recommendation.setMatchScore(recommendation.getMatchScore().add(adjustedScoreForThisMovie));
 
-                // Almacenar o actualizar en el mapa
                 recommendations.put(tconst, recommendation);
             }
         }
-
         return recommendations;
     }
 

@@ -6,9 +6,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.cisvan.api.common.OperationResult;
@@ -17,6 +21,7 @@ import com.cisvan.api.domain.profileImage.ProfileImageService;
 import com.cisvan.api.domain.userfollow.UserFollowService;
 import com.cisvan.api.domain.userfollow.dtos.FollowStatsDTO;
 import com.cisvan.api.domain.userprestige.UserPrestige;
+import com.cisvan.api.domain.userprestige.UserPrestigeRepository;
 import com.cisvan.api.domain.userprestige.UserPrestigeService;
 import com.cisvan.api.domain.users.dto.request.AuthRequest;
 import com.cisvan.api.domain.users.dto.request.LoginRequest;
@@ -53,6 +58,7 @@ public class UserOrchestrator {
     private final UserFollowService followService;
     private final BCryptPasswordEncoder encoder;
     private final UserPrestigeService userPrestigeService;
+    private final UserPrestigeRepository userPrestigeRepository;
     private final Random random = new Random();
     
     @Transactional
@@ -142,6 +148,10 @@ public class UserOrchestrator {
         }
 
         if (!userValidationService.validateEmailVerified(user, result)) {
+            return Optional.empty();
+        }
+
+        if (!userValidationService.validateBanned(user, result)) {
             return Optional.empty();
         }
 
@@ -414,4 +424,24 @@ public class UserOrchestrator {
 
         return Optional.of(dto);
     }
+
+    public Page<UserSummaryPrestigeDTO> searchUsersByUsername(String username, int page) {
+        Pageable pageable = PageRequest.of(page, 20);
+        Page<Users> usersPage = userService.searchByUsername(username, pageable);
+
+        List<UserSummaryPrestigeDTO> dtos = usersPage.getContent().stream()
+            .map(user -> {
+                Optional<UserPrestige> prestigeOpt = userPrestigeRepository.findById(user.getId());
+                return UserSummaryPrestigeDTO.builder()
+                        .id(user.getId())
+                        .username(user.getUsername())
+                        .profileImageUrl(user.getProfileImageUrl())
+                        .currentRank(prestigeOpt.map(UserPrestige::getCurrentRank).orElse((short) 0))
+                        .trendDirection(prestigeOpt.map(UserPrestige::getTrendDirection).orElse(null))
+                        .build();
+            }).toList();
+
+        return new PageImpl<>(dtos, pageable, usersPage.getTotalElements());
+    }
+
 }

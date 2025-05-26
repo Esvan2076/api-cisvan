@@ -66,5 +66,9 @@ public class Users {
     
     @Builder.Default
     @Column(name = "has_answered_notification_prompt", nullable = false)
-    private Boolean hasAnsweredNotificationPrompt = false;  
+    private Boolean hasAnsweredNotificationPrompt = false;
+
+    @Builder.Default
+    @Column(name = "banned", nullable = false)
+    private Boolean banned = false;
 }

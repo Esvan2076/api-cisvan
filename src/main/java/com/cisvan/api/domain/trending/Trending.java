@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
+
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -14,6 +16,7 @@ import java.time.LocalDateTime;
 @Table(name = "trending_content")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Trending {
@@ -26,9 +29,11 @@ public class Trending {
     @Column(name = "content_id", nullable = false)
     private String contentId;
 
+    @Builder.Default
     @Column(name = "score", nullable = false)
     private Integer score = 0;
 
+    @Builder.Default
     @Column(name = "historical_score", nullable = false)
     private Long historicalScore = 0L;
 

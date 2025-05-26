@@ -22,7 +22,6 @@ import java.util.List;
 
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 
-
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -49,28 +48,33 @@ public class SecurityConfig {
                                 "/notifications/**",
                                 "/comments", // Duplicado, una vez es suficiente
                                 "/comments-like/**",
-                                // "/comments", // Ya listado arriba
+                                "/comments/{commentId}/report",
                                 "/comments/reply",
                                 "/user/activate-notification",
                                 "/user/deactivate-notification",
                                 "/user/notification-prompt-status",
-                                "/reviews/submit"
-                        ).authenticated()
-                        .requestMatchers("/comments/admin/**").hasRole("ADMIN")
+                                "/reviews/submit")
+                        .authenticated()
+                        .requestMatchers(
+                                "/comments/admin/**",
+                                "/user/{userId}/ban-toggle",
+                                "/user/banned")
+                        .hasRole("ADMIN")
+
                         .requestMatchers( // Estos son los endpoints públicos
-                                "/auth/**", // Es común tener un path base para autenticación como /auth/login, /auth/register
+                                "/auth/**", // Es común tener un path base para autenticación como /auth/login,
+                                            // /auth/register
                                 "/user/register", // Asumiendo que tienes un endpoint de registro
-                                "/user/login",    // Asumiendo que tienes un endpoint de login
+                                "/user/login", // Asumiendo que tienes un endpoint de login
                                 "/user/resend-code",
                                 "/user/verify-email",
                                 "/user/forgot-password",
-                                "/user/reset-password"
-                                // "/user/followers" // Ya estaba en authenticated(), decide dónde debe ir.
-                                // Si es público para ver seguidores de otros, está bien aquí.
-                                // Si es para ver los seguidores del usuario autenticado, debe estar en authenticated().
-                        ).permitAll()
-                        .anyRequest().permitAll() // CAMBIO IMPORTANTE: Si quieres que todo lo demás sea público por defecto.
-                                                 // Si quieres que todo lo demás requiera autenticación por defecto, usa .anyRequest().authenticated()
+                                "/user/reset-password")
+                        .permitAll()
+                        .anyRequest().permitAll() // CAMBIO IMPORTANTE: Si quieres que todo lo demás sea público por
+                                                  // defecto.
+                                                  // Si quieres que todo lo demás requiera autenticación por defecto,
+                                                  // usa .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
@@ -81,7 +85,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("https://zparklabs.com")); // ✅ AQUÍ el dominio correcto
+        config.setAllowedOrigins(List.of("https://zparklabs.com", "http://localhost:5173/")); // ✅ AQUÍ el dominio
+                                                                                              // correcto
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

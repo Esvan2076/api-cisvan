@@ -23,4 +23,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     // Nuevo método para obtener el review por commentId
     Optional<Review> findByCommentId(Long commentId);
+
+    Page<Review> findByUserId(Long userId, Pageable pageable);
 }

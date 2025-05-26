@@ -13,7 +13,7 @@ public interface CrewRepository extends JpaRepository<Crew, String> {
     @Query(
         value = "SELECT c.tconst FROM title_crew c " +
                 "JOIN title_basics t ON c.tconst = t.tconst " +
-                "WHERE :director = ANY(c.directors) " +
+                "WHERE :director = ANY(c.directors[1:3]) " +  // No toma en cuenta el resto de los directores
                 "AND t.title_type != 'tvEpisode'",
         nativeQuery = true
     )

@@ -10,7 +10,7 @@ public class CorsConfiguration implements WebMvcConfigurer { // Considera renomb
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-              .allowedOrigins("https://zparklabs.com")
+              .allowedOrigins("https://zparklabs.com", "http://localhost:5173")
               .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH") // Asegúrate de incluir todos los métodos que usas (PATCH es común)
               .allowedHeaders("*")
               .allowCredentials(true);

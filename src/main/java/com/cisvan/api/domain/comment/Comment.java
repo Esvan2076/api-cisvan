@@ -51,6 +51,10 @@ public class Comment {
     private Boolean containsSpoiler = false;
 
     @Builder.Default
+    @Column(name = "is_reported", nullable = false)
+    private Boolean isReported = false;
+
+    @Builder.Default
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 }

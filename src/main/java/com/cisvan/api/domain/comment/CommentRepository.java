@@ -55,4 +55,25 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     @Query("SELECT c.tconst FROM Comment c WHERE c.userId = :userId AND c.tconst IS NOT NULL")
     List<String> findTconstsByUserId(@Param("userId") Long userId);
+
+    List<Comment> findByIsReportedTrueOrderByCreatedAtDesc();
+
+    @Query("""
+        SELECT COALESCE(SUM(c.likeCount), 0)
+        FROM Comment c
+        WHERE c.userId = :userId
+    """)
+    int sumLikeCountByUserId(@Param("userId") Long userId);
+
+    @Query("""
+        SELECT COUNT(c)
+        FROM Comment c
+        WHERE c.userId = :userId
+        AND c.likeCount >= :minLikes
+        AND c.parentCommentId IS NULL
+    """)
+    int countByUserIdWithMinLikes(
+        @Param("userId") Long userId,
+        @Param("minLikes") int minLikes
+    );
 }

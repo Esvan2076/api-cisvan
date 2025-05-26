@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -26,6 +27,7 @@ import com.cisvan.api.domain.users.dto.response.NotificationPromptStatusDTO;
 import com.cisvan.api.domain.users.dto.response.UserProfileDTO;
 import com.cisvan.api.domain.users.dto.response.UserSummaryPrestigeDTO;
 import com.cisvan.api.domain.users.dto.response.UserSummaryPrestigeExtendedDTO;
+import com.cisvan.api.domain.users.services.UserService;
 import com.cisvan.api.helper.ControllerHelper;
 
 @RestController
@@ -35,6 +37,7 @@ public class UserController {
 
     private final ControllerHelper controllerHelper;
     private final UserOrchestrator userOrchestrator;
+    private final UserService userService;
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody AuthRequest request, BindingResult result) {
@@ -227,5 +230,27 @@ public class UserController {
     public ResponseEntity<NotificationPromptStatusDTO> getNotificationPromptStatus(HttpServletRequest request) {
         NotificationPromptStatusDTO status = userOrchestrator.getNotificationPromptStatus(request);
         return ResponseEntity.ok(status);
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<Page<UserSummaryPrestigeDTO>> searchUsers(
+            @RequestParam String username,
+            @RequestParam(defaultValue = "0") int page
+    ) {
+        return ResponseEntity.ok(userOrchestrator.searchUsersByUsername(username, page));
+    }
+
+    @PutMapping("/{userId}/ban-toggle")
+    public ResponseEntity<?> toggleBanUser(
+        @PathVariable Long userId
+    ) {
+        boolean isBanned = userService.toggleBanUser(userId);
+        return ResponseEntity.ok(Collections.singletonMap("banned", isBanned));
+    }
+
+    @GetMapping("/banned")
+    public ResponseEntity<List<UserSummaryPrestigeDTO>> getBannedUsers() {
+        List<UserSummaryPrestigeDTO> bannedUsers = userService.getBannedUsers();
+        return ResponseEntity.ok(bannedUsers);
     }
 }

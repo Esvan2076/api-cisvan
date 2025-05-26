@@ -54,5 +54,22 @@ public class ReviewController {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Page.empty());
         }
-    }    
+    }
+
+    @GetMapping("/user/paginated")
+    public ResponseEntity<Page<ReviewResponseDTO>> getUserPaginatedReviews(
+            @RequestParam Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            HttpServletRequest request) {
+        try {
+            Page<ReviewResponseDTO> reviews = reviewOrchestrator.getUserPaginatedReviews(userId, page, request);
+            return ResponseEntity.ok(reviews);
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Page.empty());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Page.empty());
+        }
+    }
+
 }

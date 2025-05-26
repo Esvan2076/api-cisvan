@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.cisvan.api.domain.comment.Comment;
 import com.cisvan.api.domain.comment.CommentRepository;
 import com.cisvan.api.domain.notification.services.NotificationService;
+import com.cisvan.api.domain.userprestige.UserPrestigeService;
 import com.cisvan.api.domain.users.Users;
 import com.cisvan.api.domain.users.services.UserLogicService;
 
@@ -21,6 +22,7 @@ public class CommentLikeOrchestrator {
     private final CommentLikeService commentLikeService;
     private final UserLogicService userLogicService;
     private final CommentRepository commentRepository;
+    private final UserPrestigeService userPrestigeService;
     private final NotificationService notificationService;
 
     public boolean toggleLikeComment(Long commentId, HttpServletRequest request) {
@@ -36,7 +38,11 @@ public class CommentLikeOrchestrator {
         if (isLiked) {
             checkAndNotifyLikeAccumulation(commentId);
         }
-    
+
+        commentRepository.findById(commentId).ifPresent(comment -> {
+            userPrestigeService.checkIfUserShouldReevaluatePrestige(comment.getUserId());
+        });
+        
         return isLiked;
     }
 
@@ -55,7 +61,7 @@ public class CommentLikeOrchestrator {
         // Verificar si el bloque de 10 likes adicionales ha sido alcanzado
         int newLikes = currentLikes - lastNotifiedLikes;
 
-        if (newLikes >= 2) {
+        if (newLikes >= 10) {
             // Actualizar el contador de la última notificación
             comment.setLastNotifiedLikes(currentLikes);
             commentRepository.save(comment);

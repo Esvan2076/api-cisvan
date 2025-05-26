@@ -63,6 +63,15 @@ public class UserValidationService {
         return true;
     }
 
+    public boolean validateBanned(Users user, OperationResult result) {
+        if (Boolean.TRUE.equals(user.getBanned())) {
+            validationHelper.addObjectError("email", "EmailNotVerified", result);
+            return false;
+        }
+        return true;
+    }
+
+
     public boolean validateVerificationCode(Users user, String code, OperationResult result) {
         boolean expired = user.getPasswordResetExpiresAt() == null
                 || user.getPasswordResetExpiresAt().isBefore(LocalDateTime.now());

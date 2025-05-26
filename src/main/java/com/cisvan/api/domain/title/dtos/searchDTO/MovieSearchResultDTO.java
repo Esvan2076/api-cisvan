@@ -6,5 +6,6 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class MovieSearchResultDTO extends ContentSearchResultDTO {
-
+    
+    private boolean wasSearched = false;
 }

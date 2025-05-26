@@ -26,4 +26,7 @@ public class TitleAdvancedSearchDTO {
 
     // Lista de plataformas de streaming (ej. Netflix, Prime Video, etc.)
     private String streamingServices;
+
+    // NUEVO: categoría predefinida (1=valoradas, 2=populares, 3=recientes)
+    private Short category;
 }
