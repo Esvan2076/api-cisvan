@@ -6,6 +6,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface SearchHistoryRepository extends JpaRepository<SearchHistory, Long> {
@@ -39,5 +40,26 @@ public interface SearchHistoryRepository extends JpaRepository<SearchHistory, Lo
         @Param("twoMonthsAgo") LocalDateTime twoMonthsAgo,
         @Param("sixMonthsAgo") LocalDateTime sixMonthsAgo,
         @Param("oneYearAgo") LocalDateTime oneYearAgo
+    );
+
+    /**
+     * Verifica si ya existe una búsqueda para un usuario y resultado específico
+     */
+    @Query("SELECT sh FROM SearchHistory sh WHERE sh.userId = :userId AND sh.resultId = :resultId")
+    Optional<SearchHistory> findByUserIdAndResultId(
+        @Param("userId") Long userId, 
+        @Param("resultId") String resultId
+    );
+
+    @Query("""
+        SELECT DISTINCT sh FROM SearchHistory sh
+        WHERE sh.userId = :userId 
+        AND sh.resultType IN :types
+        ORDER BY sh.createdAt DESC
+        LIMIT 10
+    """)
+    List<SearchHistory> findTop10ByUserIdAndTypeOrderByCreatedAtDesc(
+        @Param("userId") Long userId,
+        @Param("types") List<String> types
     );
 }

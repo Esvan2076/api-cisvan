@@ -4,7 +4,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,23 +20,36 @@ public class SearchController {
     
     private final SearchHistoryService searchHistoryService;
     private final UserLogicService userLogicService;
-    
+
+    @GetMapping("/suggestions")
+    public ResponseEntity<SearchSuggestionDTO> getSuggestions(HttpServletRequest request) {
+        // Hacer opcional la autenticación
+        Long userId = null;
+        try {
+            Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
+            userId = userOpt.map(Users::getId).orElse(null);
+        } catch (Exception e) {
+            // Si no hay usuario autenticado, continuar sin userId
+            userId = null;
+        }
+        
+        return ResponseEntity.ok(searchHistoryService.getSuggestions(userId));
+}
+
     @PostMapping("/click")
     public ResponseEntity<?> recordSearchClick(
             @RequestBody SearchClickDTO clickData,
             HttpServletRequest request) {
         
-        Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
-        if (userOpt.isEmpty()) {
-            System.out.println("No user found in request for search click");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        
-        Users user = userOpt.get();
-        System.out.println("Recording search click for user " + user.getId() + ": " + 
-                        clickData.getResultTitle() + " (" + clickData.getResultId() + ")");
-        
+        // Solo registrar clicks si hay usuario autenticado
         try {
+            Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
+            if (userOpt.isEmpty()) {
+                // No hay usuario, pero no es un error - simplemente no registramos
+                return ResponseEntity.ok().build();
+            }
+            
+            Users user = userOpt.get();
             searchHistoryService.recordSearch(
                 user.getId(),
                 clickData.getSearchTerm(),
@@ -45,21 +57,12 @@ public class SearchController {
                 clickData.getResultId(),
                 clickData.getResultTitle()
             );
-            System.out.println("Search click recorded successfully");
             return ResponseEntity.ok().build();
         } catch (Exception e) {
+            // En caso de error, devolver OK para no interrumpir la experiencia del usuario
             System.err.println("Error recording search click: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.ok().build();
         }
-    }
-    
-    @GetMapping("/suggestions")
-    public ResponseEntity<SearchSuggestionDTO> getSuggestions(HttpServletRequest request) {
-        Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
-        Long userId = userOpt.map(Users::getId).orElse(null);
-        
-        return ResponseEntity.ok(searchHistoryService.getSuggestions(userId));
     }
     
     @Data

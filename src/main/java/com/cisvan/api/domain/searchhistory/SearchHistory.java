@@ -43,6 +43,13 @@ public class SearchHistory {
     
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
+    
+    // Método explícito para actualizar el timestamp
+    public void updateTimestamp() {
+        this.createdAt = LocalDateTime.now();
     }
 }

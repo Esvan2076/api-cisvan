@@ -16,9 +16,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.cisvan.api.domain.title.dtos.TitleKnownForDTO;
 import com.cisvan.api.domain.title.dtos.TitleReviewDTO;
+import com.cisvan.api.domain.title.dtos.UnifiedSearchResultDTO;
 import com.cisvan.api.domain.title.dtos.searchDTO.TitleAdvancedSearchDTO;
 import com.cisvan.api.domain.title.services.TitleReviewService;
 import com.cisvan.api.domain.title.services.TitleService;
+import com.cisvan.api.domain.users.Users;
+import com.cisvan.api.domain.users.services.UserLogicService;
 import com.cisvan.api.helper.ControllerHelper;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,6 +36,7 @@ public class TitleController {
     private final TitleOrchestrator titleOrchestrator;
     private final ControllerHelper controllerHelper;
     private final TitleReviewService titleReviewService;
+    private final UserLogicService userLogicService;
 
     @GetMapping("/{id}")
     public ResponseEntity<?> fetchTitleById(@PathVariable("id") String tconst) {
@@ -54,7 +58,28 @@ public class TitleController {
         List<Object> results = titleOrchestrator.searchEverything(query);
         return ResponseEntity.ok(results);
     }
-    
+
+    // Agregar después del método searchAll existente
+    @GetMapping("/search/unified")
+    public ResponseEntity<UnifiedSearchResultDTO> unifiedSearch(
+            @RequestParam("query") String query,
+            @RequestParam(value = "filter", defaultValue = "all") String filter,
+            HttpServletRequest request) {
+        
+        // Hacer opcional la autenticación
+        Long userId = null;
+        try {
+            Optional<Users> userOpt = userLogicService.getUserFromRequest(request);
+            userId = userOpt.map(Users::getId).orElse(null);
+        } catch (Exception e) {
+            // Si falla la autenticación, continuar sin usuario
+            userId = null;
+        }
+        
+        UnifiedSearchResultDTO results = titleOrchestrator.unifiedSearch(query, userId, filter);
+        return ResponseEntity.ok(results);
+    }
+
     @PostMapping("/advanced-search")
     public ResponseEntity<Page<TitleKnownForDTO>> fetchTitleWithAdvancedSearch(
             @RequestBody TitleAdvancedSearchDTO filters,
