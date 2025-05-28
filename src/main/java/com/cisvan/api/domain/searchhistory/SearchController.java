@@ -45,6 +45,7 @@ public class SearchController {
                 clickData.getResultId(),
                 clickData.getResultTitle()
             );
+            System.out.println("Search click recorded successfully");
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             System.err.println("Error recording search click: " + e.getMessage());

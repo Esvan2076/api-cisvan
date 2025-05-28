@@ -16,10 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.cisvan.api.domain.title.dtos.TitleKnownForDTO;
 import com.cisvan.api.domain.title.dtos.TitleReviewDTO;
-import com.cisvan.api.domain.title.dtos.searchDTO.MovieSearchResultDTO;
-import com.cisvan.api.domain.title.dtos.searchDTO.SerieSearchResultDTO;
 import com.cisvan.api.domain.title.dtos.searchDTO.TitleAdvancedSearchDTO;
-import com.cisvan.api.domain.title.services.TitleLogicService;
 import com.cisvan.api.domain.title.services.TitleReviewService;
 import com.cisvan.api.domain.title.services.TitleService;
 import com.cisvan.api.helper.ControllerHelper;
@@ -33,7 +30,6 @@ import lombok.RequiredArgsConstructor;
 public class TitleController {
 
     private final TitleService titleService;
-    private final TitleLogicService titleLogicService;
     private final TitleOrchestrator titleOrchestrator;
     private final ControllerHelper controllerHelper;
     private final TitleReviewService titleReviewService;
@@ -51,16 +47,6 @@ public class TitleController {
     @GetMapping("/basic/{id}")
     public ResponseEntity<?> fetchTitleBasicById(@PathVariable("id") String tconst, HttpServletRequest request) {
         return controllerHelper.handleOptional(titleOrchestrator.getTitleBasicById(tconst, request));
-    }
-
-    @GetMapping("/search-movie")
-    public ResponseEntity<List<MovieSearchResultDTO>> fetchSearchMovies(@RequestParam("query") String query) {
-        return ResponseEntity.ok(titleLogicService.searchMovies(query));
-    }
-
-    @GetMapping("/search-serie")
-    public ResponseEntity<List<SerieSearchResultDTO>> fetchSearchSeries(@RequestParam("query") String query) {
-        return ResponseEntity.ok(titleLogicService.searchSeries(query));
     }
 
     @GetMapping("/search")
