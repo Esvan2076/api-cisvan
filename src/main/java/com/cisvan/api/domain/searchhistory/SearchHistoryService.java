@@ -9,10 +9,13 @@ import com.cisvan.api.domain.searchhistory.dtos.SearchHistoryDTO;
 import com.cisvan.api.domain.searchhistory.dtos.SearchSuggestionDTO;
 import com.cisvan.api.domain.searchtrending.SearchTrending;
 import com.cisvan.api.domain.searchtrending.SearchTrendingRepository;
+import com.cisvan.api.domain.title.repos.TitleRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -24,6 +27,7 @@ public class SearchHistoryService {
 
     private final SearchHistoryRepository searchHistoryRepository;
     private final SearchTrendingRepository searchTrendingRepository;
+    private final TitleRepository titleRepository;
 
     @Transactional
     public void recordSearch(Long userId, String searchTerm, String resultType, 
@@ -55,40 +59,103 @@ public class SearchHistoryService {
 
     @Transactional(readOnly = true)
     public SearchSuggestionDTO getSuggestions(Long userId) {
-        // Si hay usuario, intentar obtener su historial
+        List<SearchHistoryDTO> suggestions = new ArrayList<>();
+        Set<String> existingIds = new HashSet<>();
+
         if (userId != null) {
             List<SearchHistory> userHistory = searchHistoryRepository
                     .findTop10ByUserIdOrderByCreatedAtDesc(userId);
 
-            if (!userHistory.isEmpty()) {
-                List<SearchHistoryDTO> suggestions = userHistory.stream()
-                        .map(sh -> SearchHistoryDTO.builder()
-                                .resultId(sh.getResultId())
-                                .resultType(sh.getResultType())
-                                .resultTitle(sh.getResultTitle())
-                                .wasSearched(true)
-                                .build())
-                        .toList();
-
-                return SearchSuggestionDTO.builder()
-                        .suggestions(suggestions)
-                        .suggestionsType("user_history")
-                        .build();
+            for (SearchHistory sh : userHistory) {
+                suggestions.add(SearchHistoryDTO.builder()
+                        .resultId(sh.getResultId())
+                        .resultType(sh.getResultType())
+                        .resultTitle(sh.getResultTitle())
+                        .wasSearched(true)
+                        .build());
+                existingIds.add(sh.getResultId());
             }
+
+            int remaining = 10 - suggestions.size();
+
+            if (remaining > 0) {
+                List<SearchTrending> trending = searchTrendingRepository
+                        .findTop10ByOrderByWeightedScoreDesc();
+
+                for (SearchTrending st : trending) {
+                    if (existingIds.contains(st.getResultId())) continue;
+                    suggestions.add(SearchHistoryDTO.builder()
+                            .resultId(st.getResultId())
+                            .resultType(st.getResultType())
+                            .resultTitle(st.getResultTitle())
+                            .wasSearched(false)
+                            .build());
+                    existingIds.add(st.getResultId());
+                    if (suggestions.size() >= 10) break;
+                }
+
+                remaining = 10 - suggestions.size(); // Recalcular por si aún faltan
+            }
+
+            if (remaining > 0) {
+                List<Object[]> fallback = titleRepository.findTopRatedTitlesExcluding(existingIds, remaining);
+                for (Object[] row : fallback) {
+                    String tconst = (String) row[0];
+                    String title = (String) row[1];
+                    String titleType = (String) row[2];
+
+                    String resultType = (titleType.equals("tvSeries") || titleType.equals("tvMiniSeries"))
+                            ? "serie" : "movie";
+
+                    suggestions.add(SearchHistoryDTO.builder()
+                            .resultId(tconst)
+                            .resultType(resultType)
+                            .resultTitle(title)
+                            .wasSearched(false)
+                            .build());
+                }
+            }
+
+            return SearchSuggestionDTO.builder()
+                    .suggestions(suggestions)
+                    .suggestionsType("user_history")
+                    .build();
         }
 
-        // Si no hay usuario o no tiene historial, devolver trending
+        // Usuario no autenticado
         List<SearchTrending> trending = searchTrendingRepository
                 .findTop10ByOrderByWeightedScoreDesc();
 
-        List<SearchHistoryDTO> suggestions = trending.stream()
-                .map(st -> SearchHistoryDTO.builder()
-                        .resultId(st.getResultId())
-                        .resultType(st.getResultType())
-                        .resultTitle(st.getResultTitle())
+        for (SearchTrending st : trending) {
+            suggestions.add(SearchHistoryDTO.builder()
+                    .resultId(st.getResultId())
+                    .resultType(st.getResultType())
+                    .resultTitle(st.getResultTitle())
+                    .wasSearched(false)
+                    .build());
+            existingIds.add(st.getResultId());
+        }
+
+        int remaining = 10 - suggestions.size();
+
+        if (remaining > 0) {
+            List<Object[]> fallback = titleRepository.findTopRatedTitlesExcluding(existingIds, remaining);
+            for (Object[] row : fallback) {
+                String tconst = (String) row[0];
+                String title = (String) row[1];
+                String titleType = (String) row[2];
+
+                String resultType = (titleType.equals("tvSeries") || titleType.equals("tvMiniSeries"))
+                        ? "serie" : "movie";
+
+                suggestions.add(SearchHistoryDTO.builder()
+                        .resultId(tconst)
+                        .resultType(resultType)
+                        .resultTitle(title)
                         .wasSearched(false)
-                        .build())
-                .toList();
+                        .build());
+            }
+        }
 
         return SearchSuggestionDTO.builder()
                 .suggestions(suggestions)

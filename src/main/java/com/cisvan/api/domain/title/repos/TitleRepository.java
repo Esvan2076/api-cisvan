@@ -221,4 +221,17 @@ public interface TitleRepository extends JpaRepository<Title, String>, TitleCust
         LIMIT :limit
     """)
     List<Object[]> findFallbackTitlesForTrending(@Param("excluded") Set<String> excluded, @Param("limit") int limit);
+
+    @Query("""
+        SELECT tb.tconst, tb.primaryTitle, tb.titleType
+        FROM Title tb
+        JOIN TitleRating tr ON tb.tconst = tr.tconst
+        WHERE tb.titleType NOT IN ('tvEpisode') 
+        AND tb.tconst NOT IN :excludedTconsts
+        ORDER BY tr.numVotes DESC
+        LIMIT :limit
+    """)
+    List<Object[]> findTopRatedTitlesExcluding(@Param("excludedTconsts") Set<String> excludedTconsts,
+                                                @Param("limit") int limit);
+
 }

@@ -135,7 +135,7 @@ public class TrendingService {
         System.out.printf("Tendencia: +%d puntos a %s por respuesta de usuario %d%n", points, tconst, userId);
     }
 
-    @Scheduled(cron = "0 00 20 * * *")
+    @Scheduled(cron = "0 00 14 * * *")
     @Transactional
     public void processDailyTrending() {
         System.out.println("Iniciando evaluación de tendencias...");
@@ -159,6 +159,7 @@ public class TrendingService {
         if (needed > 0) {
             System.out.println("Faltan " + needed + " entradas para completar el top 100. Se agregarán por votos.");
 
+            // Obtener títulos por votos
             List<Object[]> fallbackTitles = trendingRepository.findFallbackTitlesForTrending(alreadyInTop, needed);
 
             for (Object[] row : fallbackTitles) {
@@ -184,8 +185,8 @@ public class TrendingService {
                 .build());
         }
 
-        // 1. Eliminar snapshots previos del día
-        trendingSnapshotRepository.deleteAllBySnapshotDate(today);
+        // 1. Elimino todos los previos 
+        trendingSnapshotRepository.deleteAll();
         System.out.println("Snapshots anteriores del día eliminados.");
 
         // 2. Guardar los nuevos snapshots
