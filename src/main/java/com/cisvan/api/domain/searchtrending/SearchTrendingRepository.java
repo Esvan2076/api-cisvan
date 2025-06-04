@@ -29,4 +29,15 @@ public interface SearchTrendingRepository extends JpaRepository<SearchTrending, 
         LIMIT 20
     """)
     List<SearchTrending> findTop20ByTypeOrderByWeightedScoreDesc(@Param("types") List<String> types);
+
+    @Query("""
+        SELECT st FROM SearchTrending st
+        WHERE st.resultType IN :types
+        ORDER BY st.weightedScore DESC
+        LIMIT :limit
+    """)
+    List<SearchTrending> findTopByTypeOrderByWeightedScoreDesc(
+        @Param("types") List<String> types,
+        @Param("limit") int limit
+    );
 }

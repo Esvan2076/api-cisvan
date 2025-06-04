@@ -1,7 +1,6 @@
 package com.cisvan.api.domain.title;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -19,18 +18,9 @@ import org.springframework.stereotype.Service;
 
 import com.cisvan.api.domain.akas.services.AkasLogicService;
 import com.cisvan.api.domain.crew.CrewRepository;
-import com.cisvan.api.domain.name.Name;
 import com.cisvan.api.domain.name.dto.NameEssencialDTO;
 import com.cisvan.api.domain.name.dto.NameSearchResultDTO;
-import com.cisvan.api.domain.name.repos.NameRepository;
 import com.cisvan.api.domain.name.services.NameLogicService;
-import com.cisvan.api.domain.principal.Principal;
-import com.cisvan.api.domain.principal.repos.PrincipalRepository;
-import com.cisvan.api.domain.searchhistory.SearchHistory;
-import com.cisvan.api.domain.searchhistory.SearchHistoryRepository;
-import com.cisvan.api.domain.searchhistory.SearchHistoryService;
-import com.cisvan.api.domain.searchtrending.SearchTrending;
-import com.cisvan.api.domain.searchtrending.SearchTrendingRepository;
 import com.cisvan.api.domain.streaming.services.StreamingLogicService;
 import com.cisvan.api.domain.title.dtos.TitleBasicDTO;
 import com.cisvan.api.domain.title.dtos.TitleKnownForDTO;
@@ -44,6 +34,7 @@ import com.cisvan.api.domain.title.mappers.TitleMapper;
 import com.cisvan.api.domain.title.repos.TitleRepository;
 import com.cisvan.api.domain.title.services.TitleLogicService;
 import com.cisvan.api.domain.title.services.TitleService;
+import com.cisvan.api.domain.title.services.UnifiedSearchService;
 import com.cisvan.api.domain.titlerating.TitleRatingRepository;
 import com.cisvan.api.domain.trending.Trending;
 import com.cisvan.api.domain.trending.TrendingRepository;
@@ -70,14 +61,10 @@ public class TitleOrchestrator {
     private final UserLogicService userLogicService;
     private final StreamingLogicService streamingLogicService;
     private final AkasLogicService akasLogicService;
-    private final SearchHistoryService searchHistoryService;
     private final TrendingRepository trendingRepository;
     private final TrendingService trendingService;
-    private final SearchHistoryRepository searchHistoryRepository;
-    private final SearchTrendingRepository searchTrendingRepository;
     private final TitleRepository titleRepository;
-    private final NameRepository nameRepository;
-    private final PrincipalRepository principalRepository;
+    private final UnifiedSearchService unifiedSearchService;
 
     public Optional<TitleBasicDTO> getTitleBasicById(String tconst, HttpServletRequest request) {
         Optional<Title> titleOpt = titleService.getTitleById(tconst);
@@ -268,124 +255,122 @@ public class TitleOrchestrator {
         List<UnifiedSearchItemDTO> items = new ArrayList<>();
 
         if (!hasQuery) {
-            // Caso de input vacío: combinar historial + tendencias con filtro
-            Set<String> addedIds = new HashSet<>();
-
-            if (userId != null) {
-                // Obtener historial filtrado por tipo
-                List<SearchHistory> userHistory = searchHistoryRepository
-                        .findTop10ByUserIdAndTypeOrderByCreatedAtDesc(userId, mapFilterToTypes(filter));
-
-                for (SearchHistory history : userHistory) {
-                    items.add(UnifiedSearchItemDTO.builder()
-                            .id(history.getResultId())
-                            .type(history.getResultType())
-                            .title(history.getResultTitle())
-                            .subtitle(getSubtitleForSuggestion(history.getResultType(), history.getResultId()))
-                            .isRecent(true)
-                            .isPopular(false)
-                            .priority(1)
-                            .build());
-
-                    addedIds.add(history.getResultId());
-                }
-
-                int remaining = 10 - userHistory.size();
-                if (remaining > 0) {
-                    // Obtener tendencias filtradas por tipo
-                    List<SearchTrending> trending = searchTrendingRepository
-                            .findTop20ByTypeOrderByWeightedScoreDesc(mapFilterToTypes(filter));
-
-                    List<SearchTrending> filteredTrending = trending.stream()
-                            .filter(t -> !addedIds.contains(t.getResultId()))
-                            .limit(remaining)
-                            .collect(Collectors.toList());
-
-                    for (SearchTrending trend : filteredTrending) {
-                        items.add(UnifiedSearchItemDTO.builder()
-                                .id(trend.getResultId())
-                                .type(trend.getResultType())
-                                .title(trend.getResultTitle())
-                                .subtitle(getSubtitleForSuggestion(trend.getResultType(), trend.getResultId()))
-                                .isRecent(false)
-                                .isPopular(true)
-                                .priority(2)
-                                .build());
-                    }
-                }
-            } else {
-                // Usuario no autenticado: mostrar solo tendencias filtradas
-                List<SearchTrending> trending = searchTrendingRepository
-                        .findTop10ByTypeOrderByWeightedScoreDesc(mapFilterToTypes(filter));
-
-                for (SearchTrending t : trending) {
-                    items.add(UnifiedSearchItemDTO.builder()
-                            .id(t.getResultId())
-                            .type(t.getResultType())
-                            .title(t.getResultTitle())
-                            .subtitle(getSubtitleForSuggestion(t.getResultType(), t.getResultId()))
-                            .isRecent(false)
-                            .isPopular(true)
-                            .priority(2)
-                            .build());
-                }
-            }
+            items = handleEmptyQuerySearch(userId, filter);
         } else {
-            // Con query: búsqueda en tiempo real filtrada
-            Set<String> userRecentIds = userId != null
-                    ? searchHistoryService.getUserRecentSearchIdsByType(userId, mapFilterToTypes(filter))
-                    : new HashSet<>();
+            items = handleQuerySearch(query, userId, filter);
+        }
+        
+        return UnifiedSearchResultDTO.builder()
+                .items(items)
+                .hasQuery(hasQuery)
+                .build();
+    }
 
-            Set<String> popularIds = searchHistoryService.getPopularSearchIdsByType(mapFilterToTypes(filter));
+    /**
+     * Maneja búsquedas cuando no hay query (sugerencias)
+     */
+    private List<UnifiedSearchItemDTO> handleEmptyQuerySearch(Long userId, String filter) {
+        List<UnifiedSearchItemDTO> items = new ArrayList<>();
+        Set<String> addedIds = new HashSet<>();
 
-            // Aplicar búsquedas según el filtro
-            if (filter.equals("all") || filter.equals("movie")) {
-                List<MovieSearchResultDTO> movies = titleLogicService.searchMovies(query);
-                for (MovieSearchResultDTO movie : movies) {
-                    boolean isRecent = userId != null && userRecentIds.contains(movie.getTconst());
+        // 1. Obtener búsquedas recientes del usuario
+        if (userId != null) {
+            items.addAll(unifiedSearchService.getUserRecentSearches(userId, filter, addedIds));
+        }
+
+        // 2. Completar con contenido popular
+        int remaining = 10 - items.size();
+        if (remaining > 0) {
+            items.addAll(unifiedSearchService.getPopularContent(filter, remaining, addedIds));
+        }
+
+        return items;
+    }
+
+    /**
+     * Maneja búsquedas con query
+     */
+    private List<UnifiedSearchItemDTO> handleQuerySearch(String query, Long userId, String filter) {
+        List<UnifiedSearchItemDTO> items = new ArrayList<>();
+        
+        // Obtener IDs para marcar como reciente/popular
+        Set<String> userRecentIds = unifiedSearchService.getUserRecentIds(userId, filter);
+        Set<String> popularIds = unifiedSearchService.getPopularIds(filter);
+
+        // Buscar según el filtro
+        if (filter.equals("all") || filter.equals("movie")) {
+            items.addAll(searchMoviesWithMarkers(query, userRecentIds, popularIds));
+        }
+
+        if (filter.equals("all") || filter.equals("serie")) {
+            items.addAll(searchSeriesWithMarkers(query, userRecentIds, popularIds));
+        }
+
+        if (filter.equals("all") || filter.equals("person")) {
+            items.addAll(searchPeopleWithMarkers(query, userRecentIds, popularIds));
+        }
+
+        // Ordenar por prioridad y limitar a 10
+        return items.stream()
+                .sorted(Comparator.comparingInt(UnifiedSearchItemDTO::getPriority))
+                .limit(10)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Busca películas con marcadores
+     */
+    private List<UnifiedSearchItemDTO> searchMoviesWithMarkers(String query, Set<String> recentIds, Set<String> popularIds) {
+        return titleLogicService.searchMovies(query).stream()
+                .map(movie -> {
+                    boolean isRecent = recentIds.contains(movie.getTconst());
                     boolean isPopular = popularIds.contains(movie.getTconst());
-
-                    items.add(UnifiedSearchItemDTO.builder()
+                    
+                    return UnifiedSearchItemDTO.builder()
                             .id(movie.getTconst())
                             .type("movie")
                             .title(movie.getPrimaryTitle())
-                            .subtitle(movie.getStartYear() + (movie.getActors() != null ? " — " + movie.getActors() : ""))
+                            .subtitle(buildMovieSubtitle(movie))
                             .isRecent(isRecent)
                             .isPopular(isPopular && !isRecent)
                             .priority(isRecent ? 1 : (isPopular ? 2 : 3))
-                            .build());
-                }
-            }
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
 
-            if (filter.equals("all") || filter.equals("serie")) {
-                List<SerieSearchResultDTO> series = titleLogicService.searchSeries(query);
-                for (SerieSearchResultDTO serie : series) {
-                    boolean isRecent = userId != null && userRecentIds.contains(serie.getTconst());
+    /**
+     * Busca series con marcadores
+     */
+    private List<UnifiedSearchItemDTO> searchSeriesWithMarkers(String query, Set<String> recentIds, Set<String> popularIds) {
+        return titleLogicService.searchSeries(query).stream()
+                .map(serie -> {
+                    boolean isRecent = recentIds.contains(serie.getTconst());
                     boolean isPopular = popularIds.contains(serie.getTconst());
-
-                    String subtitle = serie.getStartYear() +
-                            (serie.getEndYear() != null ? " - " + serie.getEndYear() : "") +
-                            (serie.getActors() != null ? " — " + serie.getActors() : "");
-
-                    items.add(UnifiedSearchItemDTO.builder()
+                    
+                    return UnifiedSearchItemDTO.builder()
                             .id(serie.getTconst())
                             .type("serie")
                             .title(serie.getPrimaryTitle())
-                            .subtitle(subtitle)
+                            .subtitle(buildSerieSubtitle(serie))
                             .isRecent(isRecent)
                             .isPopular(isPopular && !isRecent)
                             .priority(isRecent ? 1 : (isPopular ? 2 : 3))
-                            .build());
-                }
-            }
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
 
-            if (filter.equals("all") || filter.equals("person")) {
-                List<NameSearchResultDTO> names = nameLogicService.searchNames(query);
-                for (NameSearchResultDTO name : names) {
-                    boolean isRecent = userId != null && userRecentIds.contains(name.getNconst());
+    /**
+     * Busca personas con marcadores
+     */
+    private List<UnifiedSearchItemDTO> searchPeopleWithMarkers(String query, Set<String> recentIds, Set<String> popularIds) {
+        return nameLogicService.searchNames(query).stream()
+                .map(name -> {
+                    boolean isRecent = recentIds.contains(name.getNconst());
                     boolean isPopular = popularIds.contains(name.getNconst());
-
-                    items.add(UnifiedSearchItemDTO.builder()
+                    
+                    return UnifiedSearchItemDTO.builder()
                             .id(name.getNconst())
                             .type("person")
                             .title(name.getPrimaryName())
@@ -393,99 +378,34 @@ public class TitleOrchestrator {
                             .isRecent(isRecent)
                             .isPopular(isPopular && !isRecent)
                             .priority(isRecent ? 1 : (isPopular ? 2 : 3))
-                            .build());
-                }
-            }
-
-            // Ordenar y limitar a 10
-            items = items.stream()
-                    .sorted(Comparator.comparingInt(UnifiedSearchItemDTO::getPriority))
-                    .limit(10)
-                    .collect(Collectors.toList());
-        }
-
-        return UnifiedSearchResultDTO.builder()
-                .items(items)
-                .hasQuery(hasQuery)
-                .build();
-    }
-
-    // Método auxiliar para mapear filtros a tipos de resultados
-    private List<String> mapFilterToTypes(String filter) {
-        switch (filter) {
-            case "movie":
-                return List.of("movie");
-            case "serie":
-                return List.of("tvSeries","tvMiniSeries");
-            case "person":
-                return List.of("person");
-            case "all":
-            default:
-                return List.of("movie", "serie", "person");
-        }
-    }
-
-    // Método auxiliar mejorado para obtener subtítulos
-    private String getSubtitleForSuggestion(String type, String id) {
-        try {
-            if ("movie".equals(type)) {
-                Optional<Title> title = titleRepository.findById(id);
-                if (title.isPresent()) {
-                    Title t = title.get();
-                    List<String> actors = getActorNamesForTitle(t.getTconst());
-                    return t.getStartYear() + 
-                        (!actors.isEmpty() ? " — " + String.join(", ", actors.subList(0, Math.min(3, actors.size()))) : "");
-                }
-            } else if ("serie".equals(type)) {
-                Optional<Title> title = titleRepository.findById(id);
-                if (title.isPresent()) {
-                    Title t = title.get();
-                    List<String> actors = getActorNamesForTitle(t.getTconst());
-                    return t.getStartYear() + 
-                        (t.getEndYear() != null ? " - " + t.getEndYear() : "") +
-                        (!actors.isEmpty() ? " — " + String.join(", ", actors.subList(0, Math.min(3, actors.size()))) : "");
-                }
-            } else if ("person".equals(type)) {
-                Optional<Name> name = nameRepository.findById(id);
-                if (name.isPresent()) {
-                    Name n = name.get();
-                    return n.getPrimaryProfession() != null && !n.getPrimaryProfession().isEmpty() 
-                        ? String.join(", ", n.getPrimaryProfession().subList(0, Math.min(3, n.getPrimaryProfession().size())))
-                        : "";
-                }
-            }
-        } catch (Exception e) {
-            
-        }
-        return "";
-    }
-
-    // Método auxiliar para obtener nombres de actores
-    private List<String> getActorNamesForTitle(String tconst) {
-        try {
-            // 1. Obtener los principals
-            List<Principal> principals = principalRepository.findByTitleTconstAndCategoryIn(
-                tconst, 
-                Arrays.asList("actor", "actress")
-            );
-
-            // 2. Extraer los nconst y buscar los nombres
-            List<String> actorNconsts = principals.stream()
-                .limit(3)
-                .map(Principal::getNconst)
+                            .build();
+                })
                 .collect(Collectors.toList());
+    }
 
-            // 3. Buscar los nombres en la tabla name_basics
-            List<Name> names = nameRepository.findAllById(actorNconsts);
-
-            // 4. Mapear a nombres primarios
-            return names.stream()
-                .map(Name::getPrimaryName)
-                .collect(Collectors.toList());
-
-        } catch (Exception e) {
-            return Collections.emptyList();
+    /**
+     * Construye subtítulo para películas
+     */
+    private String buildMovieSubtitle(MovieSearchResultDTO movie) {
+        String subtitle = String.valueOf(movie.getStartYear());
+        if (movie.getActors() != null && !movie.getActors().isEmpty()) {
+            subtitle += " — " + movie.getActors();
         }
+        return subtitle;
+    }
+
+    /**
+     * Construye subtítulo para series
+     */
+    private String buildSerieSubtitle(SerieSearchResultDTO serie) {
+        String subtitle = String.valueOf(serie.getStartYear());
+        if (serie.getEndYear() != null) {
+            subtitle += " - " + serie.getEndYear();
+        }
+        if (serie.getActors() != null && !serie.getActors().isEmpty()) {
+            subtitle += " — " + serie.getActors();
+        }
+        return subtitle;
     }
 
     private String buildPersonSubtitle(NameSearchResultDTO name) {
