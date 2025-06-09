@@ -135,7 +135,7 @@ public class TrendingService {
         System.out.printf("Tendencia: +%d puntos a %s por respuesta de usuario %d%n", points, tconst, userId);
     }
 
-    @Scheduled(cron = "0 00 14 * * *")
+    @Scheduled(cron = "0 */5 * * * *")
     @Transactional
     public void processDailyTrending() {
         System.out.println("Iniciando evaluación de tendencias...");

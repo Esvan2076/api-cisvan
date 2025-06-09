@@ -52,7 +52,7 @@ public class UserPrestigeService {
 
         System.out.printf("Likes actuales: %d, Checkpoint previo: %d, Diferencia: %d%n", totalLikes, checkpoint, diff);
         
-        if (diff < 10) { //Cambiar a 1 para prueba
+        if (diff < 1) { //Cambiar a 1 para prueba
             System.out.println("No se requieren cambios, menos de 10 likes de diferencia.");
             return;
         }
@@ -143,12 +143,11 @@ public class UserPrestigeService {
     }
 
     public short evaluateRank(UserPrestige p) {
-        if (p.getTotalLikes() > 2000 && p.getCommentsWith50() >= 40) return 5;
-        if (p.getTotalLikes() > 1000 && p.getCommentsWith50() >= 20) return 4;
-        if (p.getTotalLikes() > 450 && p.getCommentsWith15() >= 20) return 3;
-        if (p.getTotalLikes() > 100 && p.getCommentsWith10() >= 10) return 2;
-        // if (p.getTotalLikes() > 0 && p.getCommentsWith10() >= 0) return 1; //Degradado para prueba
-        if (p.getTotalLikes() > 25 && p.getCommentsWith10() >= 5) return 1;
+        if (p.getTotalLikes() > 5 && p.getCommentsWith50() >= 0) return 5;
+        if (p.getTotalLikes() > 4 && p.getCommentsWith50() >= 0) return 4;
+        if (p.getTotalLikes() > 3 && p.getCommentsWith15() >= 0) return 3;
+        if (p.getTotalLikes() > 2 && p.getCommentsWith10() >= 0) return 2;
+        if (p.getTotalLikes() > 0 && p.getCommentsWith10() >= 0) return 1; 
         return 0;
     }
 
